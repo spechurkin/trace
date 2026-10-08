@@ -51,9 +51,18 @@ async function drag(id: string, dx = 75, dy = 45) {
   if (!box) throw new Error('Missing node');
   const x = box.x + box.width / 2,
     y = box.y + box.height / 2;
+  // Convert board units to screen pixels so drag distances are independent of viewport and zoom.
+  const delta = await node.evaluate(
+    (element, { dx, dy }) => {
+      const matrix = (element as SVGGElement).ownerSVGElement?.getScreenCTM();
+      if (!matrix) throw new Error('Missing diagram transform');
+      return { x: matrix.a * dx + matrix.c * dy, y: matrix.b * dx + matrix.d * dy };
+    },
+    { dx, dy },
+  );
   await page.mouse.move(x, y);
   await page.mouse.down();
-  await page.mouse.move(x + dx, y + dy, { steps: 10 });
+  await page.mouse.move(x + delta.x, y + delta.y, { steps: 10 });
   await page.mouse.up();
 }
 
@@ -305,19 +314,25 @@ test('create a board, all node types, guiding answers and both person roles with
   await expect(page.locator('.inspector')).toContainText('Fixed at the center');
 });
 
-for (const height of [1000, 950]) {
-  test(`dragging, locking, independent board layouts and reopening preserve saved positions at ${height}px window height`, async () => {
+for (const { height, zoom } of [
+  { height: 1000, zoom: 100 },
+  { height: 950, zoom: 50 },
+]) {
+  test(`dragging, locking, independent board layouts and reopening preserve saved positions at ${height}px window height and ${zoom}% zoom`, async () => {
     setLocale('en');
     await launch('en', demoDatabase());
     await app.evaluate(
       ({ BrowserWindow }, height) => BrowserWindow.getAllWindows()[0].setSize(1500, height),
       height,
     );
+    for (let current = 100; current > zoom; current -= 10)
+      await page.getByRole('button', { name: 'Zoom out', exact: true }).click();
+    await expect(page.locator('.zoom-controls > span')).toHaveText(`${zoom}%`);
     await drag('domye');
     let data = await persisted();
     const first = data.clubs[0].layout!.domye;
-    expect(first.x).not.toBe(160);
-    expect(first.y).not.toBe(210);
+    expect(first.x).toBeCloseTo(235, 2);
+    expect(first.y).toBeCloseTo(255, 2);
     await page.locator('[data-node-id="domye"]').click();
     await page.getByRole('button', { name: 'Lock position', exact: true }).click();
     await persisted();
@@ -328,8 +343,8 @@ for (const height of [1000, 950]) {
     await page.getByRole('button', { name: 'Unlock position', exact: true }).click();
     await drag('domye', 30, 20);
     const moved = (await persisted()).clubs[0].layout!.domye;
-    expect(moved.x).not.toBe(first.x);
-    expect(moved.y).not.toBe(first.y);
+    expect(moved.x).toBeCloseTo(265, 2);
+    expect(moved.y).toBeCloseTo(275, 2);
     const center = await page.locator('[data-node-id="__culprit__"]').getAttribute('transform');
     await drag('__culprit__');
     expect(await page.locator('[data-node-id="__culprit__"]').getAttribute('transform')).toBe(
