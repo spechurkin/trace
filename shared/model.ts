@@ -72,7 +72,7 @@ export const connectionSchema = z
     notes: z.string().max(2000),
   })
   .strict();
-export const clubSchema = z
+export const boardSchema = z
   .object({
     id,
     name: nameSchema,
@@ -100,12 +100,12 @@ export const clubSchema = z
   .strict();
 const currentDatabaseSchema = z
   .object({
-    version: z.literal(4),
+    version: z.literal(5),
     characters: z.array(characterSchema).max(5000),
     folders: z.array(characterFolderSchema).max(500),
     relationTypes: z.array(relationTypeSchema).max(200),
-    clubs: z.array(clubSchema).max(500),
-    activeClubId: id.nullable(),
+    boards: z.array(boardSchema).max(500),
+    activeBoardId: id.nullable(),
   })
   .strict()
   .superRefine((data, ctx) => {
@@ -115,7 +115,7 @@ const currentDatabaseSchema = z
       !unique(data.characters.map((c) => c.id)) ||
       !unique(data.folders.map((folder) => folder.id)) ||
       !unique(data.relationTypes.map((t) => t.id)) ||
-      !unique(data.clubs.map((c) => c.id))
+      !unique(data.boards.map((c) => c.id))
     )
       issue(tr('validation.duplicateIds'));
     const characters = new Set(data.characters.map((c) => c.id));
@@ -165,14 +165,14 @@ const currentDatabaseSchema = z
       }
     }
     const types = new Set(data.relationTypes.map((t) => t.id));
-    if (data.activeClubId && !data.clubs.some((c) => c.id === data.activeClubId))
-      issue(tr('validation.activeClubMissing'));
-    for (const club of data.clubs) {
-      const members = new Set(club.characterIds);
-      if (!unique(club.characterIds) || club.characterIds.some((c) => !characters.has(c)))
-        issue(tr('validation.clubMembersInvalid'));
-      if (!unique(club.connections.map((c) => c.id))) issue(tr('validation.duplicateConnections'));
-      for (const [nodeId, placement] of Object.entries(club.layout || {})) {
+    if (data.activeBoardId && !data.boards.some((c) => c.id === data.activeBoardId))
+      issue(tr('validation.activeBoardMissing'));
+    for (const board of data.boards) {
+      const members = new Set(board.characterIds);
+      if (!unique(board.characterIds) || board.characterIds.some((c) => !characters.has(c)))
+        issue(tr('validation.boardMembersInvalid'));
+      if (!unique(board.connections.map((c) => c.id))) issue(tr('validation.duplicateConnections'));
+      for (const [nodeId, placement] of Object.entries(board.layout || {})) {
         if (
           !members.has(nodeId) ||
           (placement.parentId &&
@@ -188,11 +188,11 @@ const currentDatabaseSchema = z
             break;
           }
           visited.add(parent);
-          parent = club.layout?.[parent]?.parentId;
+          parent = board.layout?.[parent]?.parentId;
         }
       }
       const signatures = new Set<string>();
-      for (const connection of club.connections) {
+      for (const connection of board.connections) {
         if (
           !members.has(connection.sourceId) ||
           !members.has(connection.targetId) ||
@@ -216,23 +216,25 @@ const legacyDatabaseSchema = z.preprocess((input) => {
     typeof input !== 'object' ||
     input === null ||
     !('version' in input) ||
-    ![1, 2, 3].includes(input.version as number) ||
+    ![1, 2, 3, 4].includes(input.version as number) ||
     (input.version === 1 && 'folders' in input)
   )
     return input;
   const previous = input as Record<string, unknown>;
+  // Old field names are confined to migration; mixed formats remain invalid.
+  if ('boards' in previous || 'activeBoardId' in previous) return input;
   const migrated: Record<string, unknown> = {
     ...previous,
-    version: 4,
+    version: 5,
     ...(previous.version === 1 ? { folders: [] } : {}),
   };
-  // Legacy field names are accepted only here; mixed formats remain invalid.
   if ('circles' in previous || 'activeCircleId' in previous) {
-    if ('clubs' in previous || 'activeClubId' in previous) return input;
+    if (previous.version === 4 || 'clubs' in previous || 'activeClubId' in previous) return input;
     const { circles, activeCircleId, ...rest } = migrated;
-    return { ...rest, clubs: circles, activeClubId: activeCircleId };
+    return { ...rest, boards: circles, activeBoardId: activeCircleId };
   }
-  return migrated;
+  const { clubs, activeClubId, ...rest } = migrated;
+  return { ...rest, boards: clubs, activeBoardId: activeClubId };
 }, currentDatabaseSchema);
 
 export const databaseSchema = z.preprocess((input) => {
@@ -249,7 +251,7 @@ export type Portrait = z.infer<typeof portraitSchema>;
 export type CharacterFolder = z.infer<typeof characterFolderSchema>;
 export type RelationType = z.infer<typeof relationTypeSchema>;
 export type Connection = z.infer<typeof connectionSchema>;
-export type Club = z.infer<typeof clubSchema>;
+export type Board = z.infer<typeof boardSchema>;
 export type Database = z.infer<typeof databaseSchema>;
 export type LoadResult = { data: Database; path: string; warning?: string };
 export type ExportFormat = 'png' | 'svg';
@@ -278,25 +280,25 @@ export interface DesktopAPI {
 
 export function emptyDatabase(): Database {
   return {
-    version: 4,
+    version: 5,
     characters: [],
     folders: [],
     relationTypes: [],
-    clubs: [],
-    activeClubId: null,
+    boards: [],
+    activeBoardId: null,
   };
 }
 
-export function upsertClub(data: Database, next: Club): Database {
-  const exists = data.clubs.some((club) => club.id === next.id);
-  if (!exists && data.clubs.length >= BOARD_CREATION_LIMIT)
+export function upsertBoard(data: Database, next: Board): Database {
+  const exists = data.boards.some((board) => board.id === next.id);
+  if (!exists && data.boards.length >= BOARD_CREATION_LIMIT)
     throw new Error(tr('validation.boardLimit', BOARD_CREATION_LIMIT));
   return {
     ...data,
-    clubs: exists
-      ? data.clubs.map((club) => (club.id === next.id ? next : club))
-      : [...data.clubs, next],
-    activeClubId: next.id,
+    boards: exists
+      ? data.boards.map((board) => (board.id === next.id ? next : board))
+      : [...data.boards, next],
+    activeBoardId: next.id,
   };
 }
 
@@ -319,21 +321,21 @@ export function deleteCharacter(data: Database, characterId: string): Database {
   return {
     ...data,
     characters: data.characters.filter((c) => c.id !== characterId),
-    clubs: data.clubs.map((c) => removeFromClub(c, characterId)),
+    boards: data.boards.map((c) => removeFromBoard(c, characterId)),
   };
 }
 
-export function removeFromClub(club: Club, characterId: string): Club {
+export function removeFromBoard(board: Board, characterId: string): Board {
   return {
-    ...club,
-    characterIds: club.characterIds.filter((id) => id !== characterId),
-    connections: club.connections.filter(
+    ...board,
+    characterIds: board.characterIds.filter((id) => id !== characterId),
+    connections: board.connections.filter(
       (e) => e.sourceId !== characterId && e.targetId !== characterId,
     ),
-    ...(club.layout
+    ...(board.layout
       ? {
           layout: Object.fromEntries(
-            Object.entries(club.layout)
+            Object.entries(board.layout)
               .filter(([id]) => id !== characterId)
               .map(([id, value]) => [
                 id,

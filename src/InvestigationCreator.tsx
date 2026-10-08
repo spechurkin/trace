@@ -1,7 +1,7 @@
 import { InvestigationAssistant } from '../modules/investigation-creator/Assistant';
 import { messages } from '../modules/investigation-creator/messages';
 import type { InvestigationPlan } from '../modules/investigation-creator/schema';
-import type { Character, CharacterFolder, Club } from '../shared/model';
+import type { Board, Character, CharacterFolder } from '../shared/model';
 import type { Locale } from '../shared/i18n';
 import { CharacterForm } from './forms';
 
@@ -15,7 +15,7 @@ export function InvestigationCreator({
                                        onSave,
                                        onClose,
                                      }: {
-  board: Club;
+  board: Board;
   nodes: Character[];
   folders: CharacterFolder[];
   locale: Locale;
@@ -43,7 +43,7 @@ export function InvestigationCreator({
             character={node}
             initialKind={kind}
             folders={folders}
-            canAddToClub={false}
+            canAddToBoard={false}
             onClose={cancel}
             onSave={(character) => save(character)}
           />

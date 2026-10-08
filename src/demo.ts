@@ -79,7 +79,7 @@ export function demoDatabase(): Database {
         { id: kind, name: content.folders[kind], parentId: `dead-witness-${kind}`, kind },
       ]),
     ],
-    clubs: [
+    boards: [
       {
         id: 'dead-witness',
         name: content.name,
@@ -100,6 +100,6 @@ export function demoDatabase(): Database {
         ),
       },
     ],
-    activeClubId: 'dead-witness',
+    activeBoardId: 'dead-witness',
   };
 }

@@ -43,10 +43,10 @@ for (const locale of ['en', 'ru'] as const) {
     setLocale(locale);
     const t = messages(locale),
       data = emptyDatabase();
-    data.clubs = [
+    data.boards = [
       { id: 'new-case', name: 'New case', description: '', characterIds: [], connections: [] },
     ];
-    data.activeClubId = 'new-case';
+    data.activeBoardId = 'new-case';
     await launch(data, locale);
     await page.locator('[data-node-id="__culprit__"]').press('Enter');
     const mode = page.locator('.investigation-creator-mode');
@@ -71,7 +71,7 @@ for (const locale of ['en', 'ru'] as const) {
     await mode.getByRole('button', { name: t('backToBoard'), exact: true }).click();
     await app.close();
     await reopen();
-    expect((await persisted()).clubs[0].investigation!.crime.motive).toBe('An authored motive');
+    expect((await persisted()).boards[0].investigation!.crime.motive).toBe('An authored motive');
   });
   test(`populated example opens checker and accepts fewer than three clues in ${locale}`, async () => {
     setLocale(locale);
@@ -98,7 +98,7 @@ for (const locale of ['en', 'ru'] as const) {
       .getByRole('textbox', { name: t('explanation'), exact: true })
       .fill('Edited clue interpretation');
     await mode.getByRole('button', { name: t('save'), exact: true }).click();
-    expect((await persisted()).clubs[0].investigation!.evidence[0].explanation).toBe(
+    expect((await persisted()).boards[0].investigation!.evidence[0].explanation).toBe(
       'Edited clue interpretation',
     );
     await mode.getByRole('button', { name: t('backToBoard'), exact: true }).click();
@@ -108,7 +108,7 @@ for (const locale of ['en', 'ru'] as const) {
     await expect(
       page.locator('.investigation-creator-mode nav button[aria-current]'),
     ).toContainText(t('completeness'));
-    expect((await persisted()).clubs[0].investigation!.evidence[0].explanation).toBe(
+    expect((await persisted()).boards[0].investigation!.evidence[0].explanation).toBe(
       'Edited clue interpretation',
     );
     await page.screenshot({ path: `test-results/creator-checker-${locale}.png` });

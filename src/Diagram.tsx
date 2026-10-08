@@ -1,12 +1,12 @@
 import { tr } from '../shared/i18n';
 import { useRef, useState } from 'react';
 import { boardEdges, BRANCH_COLORS, branchOf, CULPRIT } from '../shared/investigation';
-import type { Character, Club, RelationType } from '../shared/model';
+import type { Board, Character, RelationType } from '../shared/model';
 import { sortByName } from './sorting';
 import { boardBounds, boardPositions, CENTER, edgeGeometry, initials, type Point, truncate } from './geometry';
 
 type Props = {
-  club: Club;
+  board: Board;
   characters: Character[];
   types: RelationType[];
   selectedCharacter?: string;
@@ -21,7 +21,7 @@ type Props = {
 };
 
 export default function Diagram({
-  club,
+                                  board,
   characters,
   types,
   selectedCharacter,
@@ -44,11 +44,11 @@ export default function Diagram({
     moved: boolean;
   } | null>(null);
   const suppressClick = useRef(false);
-  const positions = boardPositions(club);
+  const positions = boardPositions(board);
   if (preview) positions.set(preview.id, preview.point);
-  const edges = boardEdges(club, characters);
+  const edges = boardEdges(board, characters);
   const legend = sortByName(types.filter((t) => edges.some((e) => e.typeId === t.id)));
-  const bounds = boardBounds(club, clean ? legend.length : 0);
+  const bounds = boardBounds(board, clean ? legend.length : 0);
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -57,7 +57,7 @@ export default function Diagram({
       height={clean ? bounds.height : undefined}
       className="diagram"
       role={clean ? 'img' : 'group'}
-      aria-label={tr('diagram.titleLabel', club.name)}
+      aria-label={tr('diagram.titleLabel', board.name)}
       data-testid="diagram"
     >
       <defs>
@@ -119,7 +119,7 @@ export default function Diagram({
             fontWeight="700"
             fill="#22293c"
           >
-            {club.name}
+            {board.name}
           </text>
           <text
             x={bounds.x + 38}
@@ -128,7 +128,7 @@ export default function Diagram({
             fontSize="12"
             fill="#586899"
           >
-            {truncate(club.description, 95)}
+            {truncate(board.description, 95)}
           </text>
         </>
       )}
@@ -215,13 +215,13 @@ export default function Diagram({
           </g>
         );
       })}
-      {club.characterIds.map((id) => {
+      {board.characterIds.map((id) => {
         const character = characters.find((c) => c.id === id);
         const position = positions.get(id);
         if (!character || !position) return null;
         const selected = selectedCharacter === id;
         const labelY = 58;
-        const locked = !!club.layout?.[id]?.locked;
+        const locked = !!board.layout?.[id]?.locked;
         return (
           <g
             key={id}
@@ -342,7 +342,7 @@ export default function Diagram({
               fontWeight="600"
               fontSize="12.5"
             >
-              {truncate(character.name, club.characterIds.length > 12 ? 14 : 24)}
+              {truncate(character.name, board.characterIds.length > 12 ? 14 : 24)}
             </text>
             {locked && (
               <g transform="translate(25,-30)" pointerEvents="none">

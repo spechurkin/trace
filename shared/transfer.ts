@@ -14,11 +14,11 @@ export const transferSchema = z
   .strict()
   .superRefine((file, ctx) => {
     const issue = (message: string) => ctx.addIssue({ code: 'custom', message });
-    if (file.kind === 'characters' && (file.data.clubs.length || file.data.relationTypes.length))
+    if (file.kind === 'characters' && (file.data.boards.length || file.data.relationTypes.length))
       issue(tr('validation.characterTransferContent'));
     if (
       file.kind === 'relations' &&
-      (file.data.characters.length || file.data.folders.length || file.data.clubs.length)
+      (file.data.characters.length || file.data.folders.length || file.data.boards.length)
     )
       issue(tr('validation.relationshipTransferContent'));
   });
@@ -28,7 +28,7 @@ export type ImportSummary = {
   characters: number;
   folders: number;
   relationTypes: number;
-  clubs: number;
+  boards: number;
   reused: number;
 };
 export type TransferImportResult = LoadResult & { summary: ImportSummary };
@@ -41,29 +41,29 @@ function selected<T extends { id: string }>(items: T[], ids?: string[]): T[] {
   return items.filter((item) => wanted.has(item.id));
 }
 
-export function createStoriesTransfer(input: Database, clubIds?: string[]): TransferPackage {
+export function createStoriesTransfer(input: Database, boardIds?: string[]): TransferPackage {
   const source = databaseSchema.parse(input);
-  const clubs = selected(source.clubs, clubIds);
-  const characterIds = new Set(clubs.flatMap((club) => club.characterIds));
+  const boards = selected(source.boards, boardIds);
+  const characterIds = new Set(boards.flatMap((board) => board.characterIds));
   const characters = source.characters.filter((character) => characterIds.has(character.id));
   const folderIds = withFolderAncestors(
     source.folders,
     characters.map((character) => character.folderId),
   );
-  const typeIds = new Set(clubs.flatMap((club) => club.connections.map((edge) => edge.typeId)));
+  const typeIds = new Set(boards.flatMap((board) => board.connections.map((edge) => edge.typeId)));
   return transferSchema.parse({
     format: 'trace-transfer',
     version: 1,
     kind: 'stories',
     data: {
-      version: 4,
-      clubs,
+      version: 5,
+      boards,
       characters,
       folders: source.folders.filter((folder) => folderIds.has(folder.id)),
       relationTypes: source.relationTypes.filter((type) => typeIds.has(type.id)),
-      activeClubId: clubs.some((club) => club.id === source.activeClubId)
-        ? source.activeClubId
-        : clubs[0]?.id || null,
+      activeBoardId: boards.some((board) => board.id === source.activeBoardId)
+        ? source.activeBoardId
+        : boards[0]?.id || null,
     },
   });
 }
@@ -128,7 +128,7 @@ const characterKey = (c: Database['characters'][number]) =>
       : null,
   ]);
 const relationKey = (t: Database['relationTypes'][number]) => JSON.stringify([t.name, t.color]);
-const clubKey = (c: Database['clubs'][number]) =>
+const boardKey = (c: Database['boards'][number]) =>
   JSON.stringify([
     c.name,
     c.description,
@@ -153,7 +153,7 @@ export function mergeTransfer(
     characters: 0,
     folders: 0,
     relationTypes: 0,
-    clubs: 0,
+    boards: 0,
     reused: 0,
   };
   const folderMap = new Map<string, string>();
@@ -180,7 +180,7 @@ export function mergeTransfer(
     current: T[],
     imported: T[],
     key: (item: T) => string,
-    count: 'characters' | 'relationTypes' | 'clubs',
+    count: 'characters' | 'relationTypes' | 'boards',
   ) {
     const map = new Map<string, string>();
     const claimed = new Set<string>();
@@ -234,18 +234,18 @@ export function mergeTransfer(
     relationKey,
     'relationTypes',
   );
-  const clubMap = mergeItems(
-    data.clubs,
-    incoming.clubs.map((club) => ({
-      ...club,
-      ...(club.investigation
-        ? { investigation: remapPlan(club.investigation, (id) => characterMap.get(id) || id) }
+  const boardMap = mergeItems(
+    data.boards,
+    incoming.boards.map((board) => ({
+      ...board,
+      ...(board.investigation
+        ? { investigation: remapPlan(board.investigation, (id) => characterMap.get(id) || id) }
         : {}),
-      characterIds: club.characterIds.map((id) => characterMap.get(id)!),
-      ...(club.layout
+      characterIds: board.characterIds.map((id) => characterMap.get(id)!),
+      ...(board.layout
         ? {
             layout: Object.fromEntries(
-              Object.entries(club.layout).map(([id, entry]) => [
+              Object.entries(board.layout).map(([id, entry]) => [
                 characterMap.get(id)!,
                 {
                   ...entry,
@@ -262,21 +262,23 @@ export function mergeTransfer(
             ),
           }
         : {}),
-      connections: club.connections.map((edge) => ({
+      connections: board.connections.map((edge) => ({
         ...edge,
         sourceId: characterMap.get(edge.sourceId)!,
         targetId: characterMap.get(edge.targetId)!,
         typeId: typeMap.get(edge.typeId)!,
       })),
     })),
-    clubKey,
-    'clubs',
+    boardKey,
+    'boards',
   );
-  if (summary.clubs > 0 && data.clubs.length > BOARD_CREATION_LIMIT)
+  if (summary.boards > 0 && data.boards.length > BOARD_CREATION_LIMIT)
     throw new Error(tr('validation.boardLimit', BOARD_CREATION_LIMIT));
-  if (!data.activeClubId)
-    data.activeClubId =
-      (incoming.activeClubId && clubMap.get(incoming.activeClubId)) || data.clubs[0]?.id || null;
+  if (!data.activeBoardId)
+    data.activeBoardId =
+      (incoming.activeBoardId && boardMap.get(incoming.activeBoardId)) ||
+      data.boards[0]?.id ||
+      null;
   const merged = databaseSchema.safeParse(data);
   if (!merged.success) throw new Error(tr('errors.mergedLibraryInvalid'));
   return { data: merged.data, summary };
@@ -292,7 +294,7 @@ function availableId(id: string, items: { id: string }[]): string {
 export function describeImport(summary: ImportSummary): string {
   return tr(
     'transfer.importSummary',
-    summary.clubs,
+    summary.boards,
     summary.characters,
     summary.folders,
     summary.relationTypes,

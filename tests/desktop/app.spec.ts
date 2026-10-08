@@ -197,7 +197,7 @@ test('opens a legacy shared folder tree as independent category trees and saves 
     .click();
   const saved = await persisted();
   expect(saved.characters).toEqual(data.characters);
-  expect(saved.clubs).toEqual(data.clubs);
+  expect(saved.boards).toEqual(data.boards);
   expect(saved.folders).toHaveLength(9);
   expect(saved.folders.find((folder) => folder.name === 'New event folder')?.kind).toBe('event');
   await app.close();
@@ -240,7 +240,7 @@ test('loads the dead witness example from onboarding with all guiding answers an
     .getByRole('button', { name: creatorMessages('ru')('backToBoard'), exact: true })
     .click();
   await page.getByRole('button', { name: tr('trace.story'), exact: true }).click();
-  await expect(page.locator('.board-story p')).toHaveText(data.clubs[0].description.split('\n'));
+  await expect(page.locator('.board-story p')).toHaveText(data.boards[0].description.split('\n'));
   await page.screenshot({ path: path.join(root, 'test-results/dead-witness-board.png') });
   await app.close();
   await reopen();
@@ -249,7 +249,7 @@ test('loads the dead witness example from onboarding with all guiding answers an
 
 test('imports a case JSON into an existing library without replacing its board', async () => {
   const existing = emptyDatabase();
-  existing.clubs = [
+  existing.boards = [
     {
       id: 'existing',
       name: 'Existing case',
@@ -258,7 +258,7 @@ test('imports a case JSON into an existing library without replacing its board',
       connections: [],
     },
   ];
-  existing.activeClubId = 'existing';
+  existing.activeBoardId = 'existing';
   await launch('ru', existing);
   const incoming = demoDatabase();
   const file = path.join(directory, 'incoming.trace.json');
@@ -274,10 +274,10 @@ test('imports a case JSON into an existing library without replacing its board',
   await page.getByRole('button', { name: tr('transfer.import'), exact: true }).click();
   await expect(page.locator('.toast')).toContainText(String(incoming.characters.length));
   const imported = await persisted();
-  expect(imported.clubs).toHaveLength(2);
-  expect(imported.clubs[0]).toEqual(existing.clubs[0]);
+  expect(imported.boards).toHaveLength(2);
+  expect(imported.boards[0]).toEqual(existing.boards[0]);
   expect(imported.characters).toEqual(incoming.characters);
-  expect(imported.clubs[1]).toEqual(incoming.clubs[0]);
+  expect(imported.boards[1]).toEqual(incoming.boards[0]);
 });
 
 test('create a board, all node types, guiding answers and both person roles without a relationship editor', async () => {
@@ -329,7 +329,7 @@ for (const { height, zoom } of [
     await expect(page.locator('.zoom-controls > span')).toHaveText(`${zoom}%`);
     await drag('domye');
     let data = await persisted();
-    const first = data.clubs[0].layout!.domye;
+    const first = data.boards[0].layout!.domye;
     expect(first.x).toBeCloseTo(235, 2);
     expect(first.y).toBeCloseTo(255, 2);
     await page.locator('[data-node-id="domye"]').click();
@@ -337,11 +337,11 @@ for (const { height, zoom } of [
     await persisted();
     await drag('domye', 90, -30);
     data = await persisted();
-    expect(data.clubs[0].layout!.domye.x).toBe(first.x);
-    expect(data.clubs[0].layout!.domye.y).toBe(first.y);
+    expect(data.boards[0].layout!.domye.x).toBe(first.x);
+    expect(data.boards[0].layout!.domye.y).toBe(first.y);
     await page.getByRole('button', { name: 'Unlock position', exact: true }).click();
     await drag('domye', 30, 20);
-    const moved = (await persisted()).clubs[0].layout!.domye;
+    const moved = (await persisted()).boards[0].layout!.domye;
     expect(moved.x).toBeCloseTo(265, 2);
     expect(moved.y).toBeCloseTo(275, 2);
     const center = await page.locator('[data-node-id="__culprit__"]').getAttribute('transform');
@@ -363,12 +363,12 @@ for (const { height, zoom } of [
       .getByRole('button', { name: /Add to board/ })
       .click();
     data = await persisted();
-    expect(data.clubs[1].layout).toEqual({});
-    await page.locator('.club-list-item').first().click();
+    expect(data.boards[1].layout).toEqual({});
+    await page.locator('.board-list-item').first().click();
     await persisted();
     await app.close();
     await reopen();
-    expect((await persisted()).clubs[0].layout!.domye).toEqual(moved);
+    expect((await persisted()).boards[0].layout!.domye).toEqual(moved);
     await expect(page.locator('[data-node-id="domye"]')).toHaveAttribute(
       'transform',
       `translate(${moved.x}, ${moved.y})`,
@@ -390,7 +390,7 @@ test('branch editing updates the tree and automatic colors, then changing roles 
   const dialog = page.getByRole('dialog');
   await dialog.getByLabel('Attach to', { exact: false }).selectOption('celine');
   await dialog.getByRole('button', { name: 'Connect', exact: true }).click();
-  expect((await persisted()).clubs[0].layout!.door.parentId).toBe('celine');
+  expect((await persisted()).boards[0].layout!.door.parentId).toBe('celine');
   await page.locator('[data-node-id="domye"]').click();
   await page.locator('.inspector').getByRole('button', { name: 'Edit', exact: true }).click();
   await page.getByRole('dialog').getByLabel('Suspect', { exact: true }).uncheck();
@@ -430,7 +430,7 @@ test('localized tabs, role filters, screenshots and SVG/PNG exports work in Elec
   await expect(page).toHaveTitle(tr('app.name'));
   await page
     .locator('.rail')
-    .getByRole('button', { name: tr('navigation.clubs'), exact: true })
+    .getByRole('button', { name: tr('navigation.boards'), exact: true })
     .click();
   await page.screenshot({ path: path.join(root, 'docs/screenshots/trace-ru.png') });
   await page.locator('[data-node-id="door"]').click();
@@ -474,7 +474,7 @@ test('localized tabs, role filters, screenshots and SVG/PNG exports work in Elec
 test('portrait editing and board renaming preserve image metadata, answers and locked layout', async () => {
   setLocale('en');
   const data = demoDatabase();
-  data.clubs[0].layout!.domye.locked = true;
+  data.boards[0].layout!.domye.locked = true;
   await launch('en', data);
   await page.locator('[data-node-id="domye"]').click();
   await page.locator('.inspector').getByRole('button', { name: 'Edit', exact: true }).click();
@@ -489,6 +489,6 @@ test('portrait editing and board renaming preserve image metadata, answers and l
   await page.getByRole('dialog').getByLabel('Board name').fill('Renamed investigation');
   await page.getByRole('dialog').getByRole('button', { name: 'Save changes', exact: true }).click();
   const saved = await persisted();
-  expect(saved.clubs[0].layout?.domye.locked).toBe(true);
+  expect(saved.boards[0].layout?.domye.locked).toBe(true);
   expect(saved.characters[0].answers?.alibi).toBe('Platform 2');
 });

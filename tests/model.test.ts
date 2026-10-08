@@ -1,30 +1,26 @@
 import { russianText } from './russian-fixtures';
 import { describe, expect, it } from 'vitest';
-import {
-  databaseSchema,
-  deleteCharacter,
-  deleteCharacterFolder,
-  removeFromClub,
-} from '../shared/model';
+import { databaseSchema, deleteCharacter, deleteCharacterFolder, removeFromBoard } from '../shared/model';
 import { demoDatabase } from './original-demo';
-import { boardBounds, clubPositions, edgeGeometry } from '../src/geometry';
+import { demoDatabase as investigationDatabase } from '../src/demo';
+import { boardBounds, defaultBoardPositions, edgeGeometry } from '../src/geometry';
 
 describe('character folders', () => {
-  it('opens original libraries without changing characters, portraits or clubs', () => {
+  it('opens original libraries without changing characters, portraits or boards', () => {
     const original = demoDatabase();
-    const { folders: _folders, clubs, activeClubId, ...rest } = original;
+    const { folders: _folders, boards, activeBoardId, ...rest } = original;
     const legacy = {
       ...rest,
       version: 1,
-      circles: clubs,
-      activeCircleId: activeClubId,
+      circles: boards,
+      activeCircleId: activeBoardId,
       characters: original.characters.map(({ folderId: _folderId, ...character }) => character),
     };
     const migrated = databaseSchema.parse(legacy);
-    expect(migrated.version).toBe(4);
+    expect(migrated.version).toBe(5);
     expect(migrated.folders).toEqual([]);
     expect(migrated.characters).toEqual(original.characters);
-    expect(migrated.clubs).toEqual(original.clubs);
+    expect(migrated.boards).toEqual(original.boards);
     expect(legacy.version).toBe(1);
   });
   it('rejects missing folder references and duplicate folder names or IDs', () => {
@@ -44,7 +40,7 @@ describe('character folders', () => {
     data.folders[1] = { id: 'missing', name: russianText('samples.friends'), parentId: null };
     expect(databaseSchema.safeParse(data).success).toBe(false);
   });
-  it('deletes a folder while preserving its members and all club relationships', () => {
+  it('deletes a folder while preserving its members and all board relationships', () => {
     const data = demoDatabase();
     data.folders = [
       { id: 'family', name: russianText('demo.relationships.family'), parentId: null },
@@ -57,7 +53,7 @@ describe('character folders', () => {
     expect(deleted.characters[0].folderId).toBeNull();
     expect(deleted.characters[2].folderId).toBeNull();
     expect(deleted.characters[1].folderId).toBe('friends');
-    expect(deleted.clubs).toEqual(data.clubs);
+    expect(deleted.boards).toEqual(data.boards);
     expect(deleted.relationTypes).toEqual(data.relationTypes);
     expect(databaseSchema.safeParse(deleted).success).toBe(true);
     expect(data.characters[0].folderId).toBe('family');
@@ -65,14 +61,32 @@ describe('character folders', () => {
 });
 
 describe('library integrity', () => {
-  it.each([1, 2, 3])('migrates legacy version %i fields without losing club data', (version) => {
+  it('migrates version 4 without losing the investigation plan, tree, locks or node answers', () => {
+    const current = investigationDatabase();
+    const { boards, activeBoardId, ...rest } = current;
+    const previous = { ...rest, version: 4, clubs: boards, activeClubId: activeBoardId };
+    const before = structuredClone(previous);
+    const migrated = databaseSchema.parse(previous);
+    expect(migrated).toEqual(current);
+    expect(previous).toEqual(before);
+    expect(JSON.stringify(migrated)).not.toMatch(/"(?:clubs|activeClubId|circles|activeCircleId)"/);
+    expect(databaseSchema.safeParse({ ...previous, boards }).success).toBe(false);
+    expect(databaseSchema.safeParse({ ...previous, activeBoardId }).success).toBe(false);
+    expect(databaseSchema.safeParse({ ...previous, circles: boards }).success).toBe(false);
+    expect(databaseSchema.safeParse({ ...previous, activeCircleId: activeBoardId }).success).toBe(
+      false,
+    );
+    expect(databaseSchema.safeParse({ ...previous, activeClubId: 'missing' }).success).toBe(false);
+    expect(databaseSchema.safeParse({ ...previous, version: 5 }).success).toBe(false);
+  });
+  it.each([1, 2, 3])('migrates legacy version %i fields without losing board data', (version) => {
     const current = demoDatabase();
-    const { clubs, activeClubId, folders, ...rest } = current;
+    const { boards, activeBoardId, folders, ...rest } = current;
     const previous = {
       ...rest,
       version,
-      circles: clubs,
-      activeCircleId: activeClubId,
+      circles: boards,
+      activeCircleId: activeBoardId,
       ...(version === 1 ? {} : { folders }),
     };
     const original = structuredClone(previous);
@@ -81,12 +95,12 @@ describe('library integrity', () => {
     expect(previous).toEqual(original);
     expect(JSON.stringify(migrated)).not.toMatch(/"(?:circles|activeCircleId)"/);
   });
-  it('rejects mixed legacy/current fields and invalid migrated club references', () => {
+  it('rejects mixed legacy/current fields and invalid migrated board references', () => {
     const current = demoDatabase();
-    const { clubs, activeClubId, ...rest } = current;
-    const previous = { ...rest, version: 3, circles: clubs, activeCircleId: activeClubId };
-    expect(databaseSchema.safeParse({ ...previous, clubs }).success).toBe(false);
-    expect(databaseSchema.safeParse({ ...previous, activeClubId }).success).toBe(false);
+    const { boards, activeBoardId, ...rest } = current;
+    const previous = { ...rest, version: 3, circles: boards, activeCircleId: activeBoardId };
+    expect(databaseSchema.safeParse({ ...previous, boards }).success).toBe(false);
+    expect(databaseSchema.safeParse({ ...previous, activeBoardId }).success).toBe(false);
     expect(databaseSchema.safeParse({ ...previous, activeCircleId: 'missing' }).success).toBe(
       false,
     );
@@ -108,45 +122,45 @@ describe('library integrity', () => {
     portrait.characters[0].image = 'https://example.com/portrait.jpg';
     expect(databaseSchema.safeParse(portrait).success).toBe(false);
   });
-  it('removes a participant only from one club and removes their links there', () => {
+  it('removes a participant only from one board and removes their links there', () => {
     const data = demoDatabase();
-    const updated = removeFromClub(data.clubs[0], 'nora');
+    const updated = removeFromBoard(data.boards[0], 'nora');
     expect(updated.characterIds).not.toContain('nora');
     expect(updated.connections.some((e) => e.sourceId === 'nora' || e.targetId === 'nora')).toBe(
       false,
     );
     expect(data.characters.some((c) => c.id === 'nora')).toBe(true);
-    expect(data.clubs[0].characterIds).toContain('nora');
+    expect(data.boards[0].characterIds).toContain('nora');
   });
-  it('cascades permanent character deletion across clubs', () => {
+  it('cascades permanent character deletion across boards', () => {
     const data = demoDatabase();
-    data.clubs.push({ ...structuredClone(data.clubs[0]), id: 'second' });
+    data.boards.push({ ...structuredClone(data.boards[0]), id: 'second' });
     const deletedCharacter = deleteCharacter(data, 'nora');
-    expect(deletedCharacter.clubs.every((c) => !c.characterIds.includes('nora'))).toBe(true);
+    expect(deletedCharacter.boards.every((c) => !c.characterIds.includes('nora'))).toBe(true);
     expect(databaseSchema.safeParse(deletedCharacter).success).toBe(true);
   });
   it('prevents duplicate mutual links while allowing different types and directions', () => {
     const data = demoDatabase();
-    const club = data.clubs[0];
-    const edge = club.connections[0];
-    club.connections.push({
+    const board = data.boards[0];
+    const edge = board.connections[0];
+    board.connections.push({
       ...edge,
       id: 'new',
       sourceId: edge.targetId,
       targetId: edge.sourceId,
     });
     expect(databaseSchema.safeParse(data).success).toBe(false);
-    club.connections[club.connections.length - 1].typeId = 'fear';
+    board.connections[board.connections.length - 1].typeId = 'fear';
     expect(databaseSchema.safeParse(data).success).toBe(true);
-    club.connections[club.connections.length - 1] = { ...edge, id: 'new', directed: true };
+    board.connections[board.connections.length - 1] = { ...edge, id: 'new', directed: true };
     expect(databaseSchema.safeParse(data).success).toBe(true);
   });
 });
 
 describe('diagram geometry', () => {
-  it('expands crowded clubs and retains room for the entire exported legend', () => {
+  it('expands crowded boards and retains room for the entire exported legend', () => {
     const ids = Array.from({ length: 60 }, (_, index) => String(index));
-    const positions = clubPositions(ids);
+    const positions = defaultBoardPositions(ids);
     const first = positions.get('0')!,
       second = positions.get('1')!;
     expect(Math.hypot(first.x - second.x, first.y - second.y)).toBeGreaterThan(100);
@@ -166,7 +180,7 @@ describe('diagram geometry', () => {
     ).toBe(true);
   });
   it('places nodes at equal distance around the ring', () => {
-    const positions = clubPositions(['a', 'b', 'c', 'd']);
+    const positions = defaultBoardPositions(['a', 'b', 'c', 'd']);
     const radii = [...positions.values()].map((p) => Math.hypot(p.x - 460, p.y - 410));
     expect(new Set(radii.map((r) => Math.round(r))).size).toBe(1);
     expect(positions.get('a')?.y).toBeLessThan(410);
@@ -181,7 +195,7 @@ describe('diagram geometry', () => {
       notes: '',
     };
     const b = { ...a, id: 'b', sourceId: 'mira', targetId: 'nora' };
-    const positions = clubPositions(['nora', 'mira']);
+    const positions = defaultBoardPositions(['nora', 'mira']);
     const first = edgeGeometry(a, [a, b], positions),
       second = edgeGeometry(b, [a, b], positions);
     expect(first.label.x).not.toBe(second.label.x);

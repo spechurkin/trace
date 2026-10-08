@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { BookOpen, Link2, LockKeyhole, LockKeyholeOpen, Pencil, Plus, X } from 'lucide-react';
 import { type Message, tr } from '../shared/i18n';
-import type { Character, Club } from '../shared/model';
+import type { Board, Character } from '../shared/model';
 import {
   boardEdges,
   BRANCH_COLORS,
@@ -26,7 +26,7 @@ export function BoardInspector({
   onLock,
   onRemove,
 }: {
-  board?: Club;
+  board?: Board;
   nodes: Character[];
   selected?: string;
   onSelect: (id?: string) => void;
@@ -185,7 +185,7 @@ export function BoardInspector({
           <div className="inspector-content">
             {tab === 'story' ? (
               <div className="board-story">
-                <h2>{board?.name || tr('navigation.clubs')}</h2>
+                <h2>{board?.name || tr('navigation.boards')}</h2>
                 {(board?.description || tr('trace.storyEmpty'))
                   .split('\n')
                   .map((paragraph, index) => (

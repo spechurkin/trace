@@ -1,14 +1,6 @@
 import { afterEach, expect, it } from 'vitest';
 import { setLocale } from '../shared/i18n';
-import {
-  boardEdges,
-  BRANCH_COLORS,
-  branchOf,
-  CULPRIT,
-  kindOf,
-  parentOf,
-  questionKeys,
-} from '../shared/investigation';
+import { boardEdges, BRANCH_COLORS, branchOf, CULPRIT, kindOf, parentOf, questionKeys } from '../shared/investigation';
 import { databaseSchema, emptyDatabase } from '../shared/model';
 import { createStoriesTransfer, mergeTransfer } from '../shared/transfer';
 import { demoDatabase } from '../src/demo';
@@ -20,8 +12,8 @@ afterEach(() => setLocale('en'));
 it.each(['en', 'ru'] as const)('provides a complete, connected editable case in %s', (locale) => {
   setLocale(locale);
   const data = databaseSchema.parse(demoDatabase());
-  const board = data.clubs[0];
-  expect(data.activeClubId).toBe(board.id);
+  const board = data.boards[0];
+  expect(data.activeBoardId).toBe(board.id);
   expect(data.characters).toHaveLength(32);
   expect(new Set(data.characters.map(kindOf))).toEqual(
     new Set(['person', 'evidence', 'location', 'event']),
@@ -52,8 +44,8 @@ it.each(['en', 'ru'] as const)('provides a complete, connected editable case in 
   expect(mergeTransfer(emptyDatabase(), createStoriesTransfer(data)).data.characters).toEqual(
     data.characters,
   );
-  expect(mergeTransfer(emptyDatabase(), createStoriesTransfer(data)).data.clubs).toEqual(
-    data.clubs,
+  expect(mergeTransfer(emptyDatabase(), createStoriesTransfer(data)).data.boards).toEqual(
+    data.boards,
   );
 });
 
@@ -84,9 +76,9 @@ it('keeps both translations complete and creates independent data on each invoca
   setLocale('ru');
   const original = demoDatabase();
   original.characters[0].answers!.alibi = 'Edited by user';
-  original.clubs[0].layout!.domye.x = 999;
+  original.boards[0].layout!.domye.x = 999;
   expect(demoDatabase().characters[0].answers!.alibi).not.toBe('Edited by user');
-  expect(demoDatabase().clubs[0].layout!.domye.x).toBe(160);
+  expect(demoDatabase().boards[0].layout!.domye.x).toBe(160);
   setLocale('en');
   expect(original.characters[0].name).toBe(russian.nodes.domye.name);
   expect(demoDatabase().characters[0].name).toBe(english.nodes.domye.name);

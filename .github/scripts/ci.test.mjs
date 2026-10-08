@@ -19,7 +19,7 @@ const context = {
 
 async function assetFixture(t, releaseVersion = version) {
   const parent = path.resolve(tmpdir());
-  const directory = await mkdtemp(path.join(parent, 'clubs-ci-'));
+  const directory = await mkdtemp(path.join(parent, 'trace-ci-'));
   t.after(async () => {
     assert.equal(path.dirname(directory), parent);
     await rm(directory, { recursive: true, force: true });
@@ -68,7 +68,7 @@ function apiFixture({ releases = [], assets = [], failUpload, corruptUpload } = 
         };
       }
       return {
-        data: { id: 42, html_url: 'https://github.com/example/clubs/releases/tag/v1.2.3', ...args },
+        data: { id: 42, html_url: 'https://github.com/example/trace/releases/tag/v1.2.3', ...args },
       };
     };
   }
@@ -93,10 +93,13 @@ function apiFixture({ releases = [], assets = [], failUpload, corruptUpload } = 
     },
   };
   return {
-    github, core: {
+    github,
+    core: {
       info() {
-      }, summary,
-    }, calls,
+      },
+      summary,
+    },
+    calls,
   };
 }
 

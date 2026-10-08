@@ -2,7 +2,7 @@ import { expect, it } from 'vitest';
 import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { performance } from 'node:perf_hooks';
-import { databaseSchema, deleteCharacter, emptyDatabase, removeFromClub } from '../shared/model';
+import { databaseSchema, deleteCharacter, emptyDatabase, removeFromBoard } from '../shared/model';
 import { boardEdges, canParent, CULPRIT, setParent } from '../shared/investigation';
 import { createStoriesTransfer, mergeTransfer } from '../shared/transfer';
 import { boardBounds, boardPositions, edgeGeometry } from '../src/geometry';
@@ -36,11 +36,11 @@ it('rejects each oversized collection and invalid boundary without changing sour
   for (const data of [stressDatabase(5001), stressDatabase(1, 501)])
     expect(databaseSchema.safeParse(data).success).toBe(false);
   const data = stressDatabase(501);
-  data.clubs[0].characterIds.push('n500');
+  data.boards[0].characterIds.push('n500');
   expect(databaseSchema.safeParse(data).success).toBe(false);
   for (const coordinate of [10001, -10001, NaN, Infinity]) {
     const invalid = stressDatabase(1);
-    invalid.clubs[0].layout!.n0.x = coordinate;
+    invalid.boards[0].layout!.n0.x = coordinate;
     expect(databaseSchema.safeParse(invalid).success).toBe(false);
   }
 });
@@ -48,16 +48,16 @@ it('rejects each oversized collection and invalid boundary without changing sour
 it('handles a 500-level branch chain, depth ordering and finite geometry', async () => {
   const data = stressDatabase(500, 1, true);
   expect(databaseSchema.safeParse(data).success).toBe(true);
-  const edges = await timed('chain500EdgesMs', () => boardEdges(data.clubs[0], data.characters));
-  expect(edges.map((edge) => edge.targetId)).toEqual(data.clubs[0].characterIds);
-  expect(canParent(data.clubs[0], 'n0', 'n499')).toBe(false);
-  const positions = boardPositions(data.clubs[0]);
+  const edges = await timed('chain500EdgesMs', () => boardEdges(data.boards[0], data.characters));
+  expect(edges.map((edge) => edge.targetId)).toEqual(data.boards[0].characterIds);
+  expect(canParent(data.boards[0], 'n0', 'n499')).toBe(false);
+  const positions = boardPositions(data.boards[0]);
   const paths = await timed('chain500GeometryMs', () =>
     edges.map((edge) => edgeGeometry(edge, edges, positions).path),
   );
   expect(paths).toHaveLength(500);
   expect(paths.join('')).not.toMatch(/NaN|Infinity/);
-  expect(boardBounds(data.clubs[0]).width).toBeGreaterThan(0);
+  expect(boardBounds(data.boards[0]).width).toBeGreaterThan(0);
 });
 
 it('preserves tree invariants during 1000 deterministic edits and 100 deletions', () => {
@@ -67,14 +67,14 @@ it('preserves tree invariants during 1000 deterministic edits and 100 deletions'
   for (let i = 0; i < 1000; i++) {
     const child = `n${random() % 500}`,
       parent = random() % 3 ? `n${random() % 500}` : CULPRIT;
-    if (canParent(data.clubs[0], child, parent))
-      data.clubs[0] = setParent(data.clubs[0], child, parent);
+    if (canParent(data.boards[0], child, parent))
+      data.boards[0] = setParent(data.boards[0], child, parent);
     if (i % 50 === 0) expect(databaseSchema.safeParse(data).success).toBe(true);
   }
   for (let i = 0; i < 100; i++) data = deleteCharacter(data, `n${i}`);
   expect(databaseSchema.safeParse(data).success).toBe(true);
   expect(data.characters).toHaveLength(400);
-  for (const board of data.clubs) {
+  for (const board of data.boards) {
     expect(boardEdges(board, data.characters)).toHaveLength(400);
     expect(
       Object.values(board.layout!).every(
@@ -91,13 +91,13 @@ it('round trips 500 nodes and deep branches through collision-heavy imports idem
   current.characters.forEach((node) => {
     node.name += ' existing';
   });
-  current.clubs[0].name += ' existing';
+  current.boards[0].name += ' existing';
   const merged = await timed('collisionImport500Ms', () => mergeTransfer(current, file));
   expect(merged.summary.characters).toBe(500);
   expect(merged.data.characters).toHaveLength(1000);
   const again = mergeTransfer(merged.data, file);
   expect(again.summary.characters).toBe(0);
-  expect(again.summary.clubs).toBe(0);
+  expect(again.summary.boards).toBe(0);
   expect(again.data).toEqual(merged.data);
   expect(mergeTransfer(emptyDatabase(), file).data).toEqual(data);
 });
@@ -113,13 +113,13 @@ it('serializes 100 concurrent writes and retains the penultimate backup', async 
       Array.from({ length: 100 }, (_, i) =>
         repo.save({
           ...data,
-          clubs: [{ ...data.clubs[0], name: `Revision ${i}` }],
+          boards: [{ ...data.boards[0], name: `Revision ${i}` }],
         }),
       ),
     );
   });
-  expect((await new Repository(directory).load()).data.clubs[0].name).toBe('Revision 99');
-  expect(JSON.parse(await readFile(repo.file + '.bak', 'utf8')).clubs[0].name).toBe('Revision 98');
+  expect((await new Repository(directory).load()).data.boards[0].name).toBe('Revision 99');
+  expect(JSON.parse(await readFile(repo.file + '.bak', 'utf8')).boards[0].name).toBe('Revision 98');
 });
 
 it('rejects invalid saves and oversized files while preserving valid persisted data', async () => {
@@ -129,7 +129,7 @@ it('rejects invalid saves and oversized files while preserving valid persisted d
   await repo.load();
   const data = stressDatabase(1);
   await repo.save(data);
-  expect(() => repo.save({ ...data, activeClubId: 'missing' })).toThrow();
+  expect(() => repo.save({ ...data, activeBoardId: 'missing' })).toThrow();
   expect((await repo.load()).data).toEqual(data);
   const { open } = await import('node:fs/promises');
   const file = path.join(directory, 'oversized.json');
@@ -159,8 +159,8 @@ it('rejects malicious text as structure and leaves valid text inert', () => {
 
 it('removes chain roots without orphaning surviving descendants', () => {
   const data = stressDatabase(500, 1, true);
-  const board = removeFromClub(data.clubs[0], 'n0');
+  const board = removeFromBoard(data.boards[0], 'n0');
   expect(board.layout!.n1.parentId).toBe(CULPRIT);
   expect(board.layout!.n499.parentId).toBe('n498');
-  expect(databaseSchema.safeParse({ ...data, clubs: [board] }).success).toBe(true);
+  expect(databaseSchema.safeParse({ ...data, boards: [board] }).success).toBe(true);
 });

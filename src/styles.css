@@ -357,7 +357,7 @@ input[type='checkbox'] {
     font-weight: 600;
 }
 
-.new-club {
+.new-board {
     justify-content: flex-start;
     gap: 9px;
     padding: 10px 13px;
@@ -368,11 +368,11 @@ input[type='checkbox'] {
     width: 100%;
 }
 
-.new-club:hover {
+.new-board:hover {
     background: #dae0f3;
 }
 
-.club-list {
+.board-list {
     overflow: auto;
     min-height: 70px;
     max-height: 38vh;
@@ -380,7 +380,7 @@ input[type='checkbox'] {
     flex-shrink: 1;
 }
 
-.club-list-item {
+.board-list-item {
     display: flex;
     gap: 12px;
     padding: 13px 11px;
@@ -392,16 +392,16 @@ input[type='checkbox'] {
     color: #7684b0;
 }
 
-.club-list-item.active {
+.board-list-item.active {
     background: #e8ecf8;
     color: #51608d;
 }
 
-.club-list-item:hover {
+.board-list-item:hover {
     background: #eef1fa;
 }
 
-.club-list-item span {
+.board-list-item span {
     display: flex;
     flex: 1;
     min-width: 0;
@@ -409,7 +409,7 @@ input[type='checkbox'] {
     gap: 5px;
 }
 
-.club-list-item strong {
+.board-list-item strong {
     font-size: 11px;
     font-weight: 650;
     overflow: hidden;
@@ -418,7 +418,7 @@ input[type='checkbox'] {
     color: #3e4a6c;
 }
 
-.club-list-item small {
+.board-list-item small {
     font-size: 9px;
     color: #8390b8;
 }
@@ -595,7 +595,7 @@ input[type='checkbox'] {
     gap: 12px;
 }
 
-.more-club {
+.more-board {
     margin-right: 2px;
 }
 
@@ -2216,7 +2216,7 @@ input[type='checkbox'] {
 }
 
 .member-main small,
-.club-list-item small,
+.board-list-item small,
 .picker-row small,
 .connection-row small,
 .type-card p,

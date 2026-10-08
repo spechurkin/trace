@@ -1,4 +1,4 @@
-import type { Character, Club, Connection, RelationType } from './model';
+import type { Board, Character, Connection, RelationType } from './model';
 import { type Message, tr } from './i18n';
 
 export const CULPRIT = '__culprit__';
@@ -44,11 +44,11 @@ export function investigationTypes(): RelationType[] {
   }));
 }
 
-export function parentOf(board: Club, id: string) {
+export function parentOf(board: Board, id: string) {
   return board.layout?.[id]?.parentId || CULPRIT;
 }
 
-export function canParent(board: Club, child: string, parent: string): boolean {
+export function canParent(board: Board, child: string, parent: string): boolean {
   if (
     !board.characterIds.includes(child) ||
     (parent !== CULPRIT && !board.characterIds.includes(parent))
@@ -63,7 +63,7 @@ export function canParent(board: Club, child: string, parent: string): boolean {
   return true;
 }
 
-export function setParent(board: Club, child: string, parent: string): Club {
+export function setParent(board: Board, child: string, parent: string): Board {
   if (!canParent(board, child, parent)) throw new Error(tr('trace.invalidTree'));
   return {
     ...board,
@@ -71,7 +71,7 @@ export function setParent(board: Club, child: string, parent: string): Club {
   };
 }
 
-export function boardEdges(board: Club, nodes: Character[]): Connection[] {
+export function boardEdges(board: Board, nodes: Character[]): Connection[] {
   const byId = new Map(nodes.map((n) => [n.id, n]));
   const depth = (id: string) => {
     const seen = new Set<string>();
@@ -101,7 +101,7 @@ export function boardEdges(board: Club, nodes: Character[]): Connection[] {
     .sort((a, b) => depth(a.targetId) - depth(b.targetId));
 }
 
-export function retainMembers(board: Club, ids: string[]): Club {
+export function retainMembers(board: Board, ids: string[]): Board {
   const members = new Set(ids);
   return {
     ...board,

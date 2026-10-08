@@ -3,7 +3,7 @@ import { auditInvestigation, explore, suggestVersions } from './engine';
 import { creatorSchema, emptyPlan, remapPlan } from './schema';
 import { demoDatabase } from '../../src/demo';
 import { setLocale } from '../../shared/i18n';
-import { databaseSchema, emptyDatabase, removeFromClub } from '../../shared/model';
+import { databaseSchema, emptyDatabase, removeFromBoard } from '../../shared/model';
 import { createStoriesTransfer, mergeTransfer } from '../../shared/transfer';
 import type { InvestigationNode } from './contracts';
 
@@ -11,7 +11,7 @@ afterEach(() => setLocale('en'));
 
 function sample() {
   const data = demoDatabase(),
-    board = data.clubs[0],
+    board = data.boards[0],
     p = board.investigation!;
   return {
     data,
@@ -119,7 +119,7 @@ describe('existing test investigation', () => {
     s.p.evidence = s.p.evidence.filter((e) => e.nodeId !== 'calls');
     expect(codes(s.audit())).toContain('consequenceMissing');
     expect(codes(s.audit())).toContain('unusedEvidence');
-    const removed = removeFromClub(s.board, 'apartment');
+    const removed = removeFromBoard(s.board, 'apartment');
     expect(codes(auditInvestigation(removed, s.nodes))).toContain('reference');
   });
 });
@@ -307,7 +307,7 @@ describe('recommendations, suggestions and persistence', () => {
   });
   it('persists plans, accepts legacy boards and remaps every node reference on import', () => {
     const s = sample();
-    expect(databaseSchema.parse(s.data).clubs[0].investigation).toEqual(s.p);
+    expect(databaseSchema.parse(s.data).boards[0].investigation).toEqual(s.p);
     const old = sample();
     delete old.board.investigation;
     expect(databaseSchema.safeParse(old.data).success).toBe(true);
@@ -321,11 +321,11 @@ describe('recommendations, suggestions and persistence', () => {
       n.name += ' altered';
     });
     const merged = mergeTransfer(conflict.data, createStoriesTransfer(s.data));
-    const imported = merged.data.clubs.find((c) => c.id !== conflict.board.id)!;
+    const imported = merged.data.boards.find((c) => c.id !== conflict.board.id)!;
     expect(imported.investigation).toBeTruthy();
     expect(auditInvestigation(imported, merged.data.characters).errors).toBe(0);
     expect(
-      mergeTransfer(emptyDatabase(), createStoriesTransfer(s.data)).data.clubs[0].investigation,
+      mergeTransfer(emptyDatabase(), createStoriesTransfer(s.data)).data.boards[0].investigation,
     ).toEqual(s.p);
   });
 });

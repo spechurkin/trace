@@ -1,10 +1,4 @@
-import {
-  _electron as electron,
-  type ElectronApplication,
-  expect,
-  type Page,
-  test,
-} from '@playwright/test';
+import { _electron as electron, type ElectronApplication, expect, type Page, test } from '@playwright/test';
 import { mkdir, mkdtemp } from 'node:fs/promises';
 import path from 'node:path';
 import { setLocale, tr } from '../../shared/i18n';
@@ -46,8 +40,8 @@ test.afterEach(async () => {
 });
 
 test('browser fallback creates nodes in IndexedDB and preserves them after reload', async () => {
-  await page.getByRole('button', { name: tr('clubs.createFirst'), exact: true }).click();
-  await page.getByRole('dialog').getByLabel(tr('clubs.nameLabel')).fill('Browser QA board');
+  await page.getByRole('button', { name: tr('boards.createFirst'), exact: true }).click();
+  await page.getByRole('dialog').getByLabel(tr('boards.nameLabel')).fill('Browser QA board');
   await page.getByRole('dialog').locator('button[type=submit]').click();
   await page
     .locator('.inspector')

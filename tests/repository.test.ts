@@ -12,7 +12,7 @@ setLocale('ru');
 const directories: string[] = [];
 
 async function repository() {
-  const directory = await mkdtemp(path.join(os.tmpdir(), 'krugi-test-'));
+  const directory = await mkdtemp(path.join(os.tmpdir(), 'trace-repository-'));
   directories.push(directory);
   return new Repository(directory);
 }
@@ -23,17 +23,25 @@ afterEach(async () => {
 });
 
 describe('local filesystem persistence', () => {
-  it.each([1, 2, 3])(
-    'migrates an on-disk version %i library and retains the original backup',
-    async (version) => {
+  it.each([
+    [1, 'circles'],
+    [2, 'circles'],
+    [3, 'circles'],
+    [1, 'clubs'],
+    [2, 'clubs'],
+    [3, 'clubs'],
+    [4, 'clubs'],
+  ] as const)(
+    'migrates an on-disk version %i %s library and retains the original backup',
+    async (version, field) => {
       const repo = await repository();
       const current = demoDatabase();
-      const { clubs, activeClubId, folders, ...rest } = current;
+      const { boards, activeBoardId, folders, ...rest } = current;
       const legacy = {
         ...rest,
         version,
-        circles: clubs,
-        activeCircleId: activeClubId,
+        [field]: boards,
+        [field === 'clubs' ? 'activeClubId' : 'activeCircleId']: activeBoardId,
         ...(version === 1 ? {} : { folders }),
         characters: current.characters.map(({ folderId: _folderId, ...character }) => character),
       };

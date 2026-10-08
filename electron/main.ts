@@ -115,7 +115,7 @@ function registerHandlers() {
         'backup.replaceDetail',
         data.characters.length,
         data.folders.length,
-        data.clubs.length,
+        data.boards.length,
       ),
       buttons: [tr('actions.cancel'), tr('actions.replace')],
       defaultId: 0,
