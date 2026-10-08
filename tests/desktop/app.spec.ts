@@ -492,3 +492,44 @@ test('portrait editing and board renaming preserve image metadata, answers and l
   expect(saved.boards[0].layout?.domye.locked).toBe(true);
   expect(saved.characters[0].answers?.alibi).toBe('Platform 2');
 });
+
+for (const [version, field] of [
+  [3, 'circles'],
+  [4, 'clubs'],
+] as const) {
+  test(`opens version ${version} ${field} JSON and saves boards without losing case content`, async () => {
+    const current = demoDatabase();
+    await launch('en', current);
+    await app.close();
+    const { boards, activeBoardId, ...rest } = current;
+    const legacy = {
+      ...rest,
+      version,
+      [field]: boards,
+      [field === 'clubs' ? 'activeClubId' : 'activeCircleId']: activeBoardId,
+    };
+    await writeFile(path.join(directory, 'library.json'), JSON.stringify(legacy));
+    await reopen();
+    await expect(page.locator('.board-list-item')).toHaveCount(1);
+    await expect(page.locator('[data-node-id="domye"]')).toBeVisible();
+    await page.locator('.board-list-item').first().click();
+    await expect
+      .poll(
+        async () =>
+          JSON.parse(await readFile(path.join(directory, 'library.json'), 'utf8')).version,
+      )
+      .toBe(5);
+    const saved = JSON.parse(await readFile(path.join(directory, 'library.json'), 'utf8'));
+    expect(saved).toEqual(current);
+    expect(saved).not.toHaveProperty('clubs');
+    expect(saved).not.toHaveProperty('circles');
+    expect(saved).not.toHaveProperty('activeClubId');
+    expect(saved).not.toHaveProperty('activeCircleId');
+    expect(JSON.parse(await readFile(path.join(directory, 'library.json.bak'), 'utf8'))).toEqual(
+      legacy,
+    );
+    await app.close();
+    await reopen();
+    expect(await persisted()).toEqual(current);
+  });
+}

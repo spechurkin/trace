@@ -195,7 +195,7 @@
   flex: 1;
   min-height: 0;
   overflow: auto;
-  padding: 28px 40px;
+  padding: 28px 40px 0;
   background: #fff;
 }
 
