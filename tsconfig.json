@@ -21,6 +21,7 @@
   },
   "include": [
     "src",
+    "modules",
     "shared",
     "electron",
     "tests",

@@ -7,13 +7,7 @@ import { defaultPortraitTransform, readPortrait } from './portrait';
 import { PortraitEditor } from './PortraitEditor';
 import { folderEntries, folderKindOf, folderSubtree } from '../shared/folders';
 import { sortByName } from './sorting';
-import {
-  BRANCH_COLORS,
-  kindOf,
-  type NodeKind,
-  nodeLabel,
-  questionKeys,
-} from '../shared/investigation';
+import { BRANCH_COLORS, kindOf, type NodeKind, nodeLabel, questionKeys } from '../shared/investigation';
 
 type Actions = { onClose: () => void };
 
@@ -401,6 +395,7 @@ export function ClubForm({
         e.preventDefault();
         if (name.trim())
           onSave({
+            ...club,
             id: club?.id || crypto.randomUUID(),
             name: name.trim(),
             description: description.trim(),

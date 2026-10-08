@@ -1,14 +1,9 @@
 import { getLocale } from '../shared/i18n';
 import { type Character, type Database, emptyDatabase } from '../shared/model';
-import {
-  BRANCH_COLORS,
-  branchOf,
-  CULPRIT,
-  type NodeKind,
-  questionKeys,
-} from '../shared/investigation';
+import { BRANCH_COLORS, branchOf, CULPRIT, type NodeKind, questionKeys } from '../shared/investigation';
 import english from './demo-content/en.json' with { type: 'json' };
 import russian from './demo-content/ru.json' with { type: 'json' };
+import { demoCreatorPlan } from './demo-creator';
 
 // Links describe leads, not an accusation of murder. Generated text becomes user-owned.
 const nodes: {
@@ -91,6 +86,7 @@ export function demoDatabase(): Database {
         description: content.description,
         characterIds: characters.map((node) => node.id),
         connections: [],
+        investigation: demoCreatorPlan(characters),
         layout: Object.fromEntries(
           nodes.map(({ id, x, y, parent, locked }) => [
             id,

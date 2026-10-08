@@ -1,16 +1,11 @@
-import {
-  _electron as electron,
-  type ElectronApplication,
-  expect,
-  type Page,
-  test,
-} from '@playwright/test';
+import { _electron as electron, type ElectronApplication, expect, type Page, test } from '@playwright/test';
 import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { demoDatabase } from '../../src/demo';
 import { setLocale, tr } from '../../shared/i18n';
 import { type Database, databaseSchema, emptyDatabase } from '../../shared/model';
 import { createStoriesTransfer } from '../../shared/transfer';
+import { messages as creatorMessages } from '../../modules/investigation-creator/messages';
 
 let app: ElectronApplication, page: Page, directory: string;
 const root = process.cwd();
@@ -240,7 +235,10 @@ test('loads the dead witness example from onboarding with all guiding answers an
     .getByRole('button', { name: tr('actions.cancel'), exact: true })
     .click();
   await page.locator('[data-node-id="__culprit__"]').click();
-  await page.getByRole('button', { name: tr('actions.clearSelection'), exact: true }).click();
+  await expect(page.locator('.investigation-creator-mode')).toBeVisible();
+  await page
+    .getByRole('button', { name: creatorMessages('ru')('backToBoard'), exact: true })
+    .click();
   await page.getByRole('button', { name: tr('trace.story'), exact: true }).click();
   await expect(page.locator('.board-story p')).toHaveText(data.clubs[0].description.split('\n'));
   await page.screenshot({ path: path.join(root, 'test-results/dead-witness-board.png') });
@@ -311,7 +309,8 @@ test('create a board, all node types, guiding answers and both person roles with
   await expect(page.locator('.diagram-node')).toHaveCount(5);
   await expect(page.locator('.diagram-edge')).toHaveCount(4);
   await page.locator('[data-node-id="__culprit__"]').click();
-  await expect(page.locator('.inspector')).toContainText('Fixed at the center');
+  await expect(page.locator('.investigation-creator-mode')).toBeVisible();
+  await expect(page.locator('.editor-layout')).toHaveCount(0);
 });
 
 for (const { height, zoom } of [

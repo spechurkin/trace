@@ -1,13 +1,8 @@
 import { tr } from './i18n';
 import { z } from 'zod';
-import {
-  BOARD_CREATION_LIMIT,
-  type Database,
-  databaseSchema,
-  emptyDatabase,
-  type LoadResult,
-} from './model';
+import { BOARD_CREATION_LIMIT, type Database, databaseSchema, emptyDatabase, type LoadResult } from './model';
 import { folderEntries, folderKindOf, folderSubtree, withFolderAncestors } from './folders';
+import { remapPlan } from '../modules/investigation-creator/schema';
 
 export const transferSchema = z
   .object({
@@ -137,6 +132,7 @@ const clubKey = (c: Database['clubs'][number]) =>
   JSON.stringify([
     c.name,
     c.description,
+    c.investigation || null,
     c.characterIds,
     Object.entries(c.layout || {}).sort(([a], [b]) => a.localeCompare(b)),
     c.connections.map((e) => [e.sourceId, e.targetId, e.typeId, e.directed, e.notes]),
@@ -242,6 +238,9 @@ export function mergeTransfer(
     data.clubs,
     incoming.clubs.map((club) => ({
       ...club,
+      ...(club.investigation
+        ? { investigation: remapPlan(club.investigation, (id) => characterMap.get(id) || id) }
+        : {}),
       characterIds: club.characterIds.map((id) => characterMap.get(id)!),
       ...(club.layout
         ? {

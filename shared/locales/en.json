@@ -1,4 +1,5 @@
 {
+  "trace.creatorHint": "Click the Culprit to enter the step-by-step investigation assistant.",
   "actions.add": "Add",
   "actions.cancel": "Cancel",
   "actions.clearSelection": "Clear selection",

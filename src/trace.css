@@ -190,3 +190,32 @@
     margin: 0 0 16px;
     overflow-wrap: anywhere;
 }
+
+.investigation-creator-mode {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 28px 40px;
+  background: #fff;
+}
+
+.creator-mode-heading {
+  max-width: 1100px;
+  margin: 0 auto 18px;
+}
+
+.creator-mode-heading h2 {
+  font-size: 23px;
+  color: #173ea5;
+  margin: 0;
+}
+
+.creator-mode-heading p {
+  color: #627087;
+  margin: 6px 0;
+}
+
+.investigation-creator-mode .investigation-assistant {
+  max-width: 1100px;
+  margin: 0 auto;
+}

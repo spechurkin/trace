@@ -3,6 +3,7 @@ import { tr } from './i18n';
 import { z } from 'zod';
 import type { TransferImportResult, TransferPackage } from './transfer';
 import { folderKindOf, folderSubtree, migrateFolderCategories } from './folders';
+import { creatorSchema } from '../modules/investigation-creator/schema';
 
 // Keep older libraries readable; this limit applies to adding new boards.
 export const BOARD_CREATION_LIMIT = 100;
@@ -78,6 +79,7 @@ export const clubSchema = z
     description: z.string().max(2000),
     characterIds: z.array(id).max(500),
     connections: z.array(connectionSchema).max(10000),
+    investigation: creatorSchema.optional(),
     layout: z
       .record(
         id,

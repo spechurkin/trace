@@ -5,5 +5,5 @@ export default defineConfig({
   base: './',
   plugins: [react()],
   server: { host: '127.0.0.1' },
-  test: { include: ['tests/**/*.test.ts'], environment: 'node' },
+  test: { include: ['tests/**/*.test.ts', 'modules/**/*.test.ts'], environment: 'node' },
 });

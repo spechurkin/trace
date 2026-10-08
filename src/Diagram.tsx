@@ -3,15 +3,7 @@ import { useRef, useState } from 'react';
 import { boardEdges, BRANCH_COLORS, branchOf, CULPRIT } from '../shared/investigation';
 import type { Character, Club, RelationType } from '../shared/model';
 import { sortByName } from './sorting';
-import {
-  boardBounds,
-  boardPositions,
-  CENTER,
-  edgeGeometry,
-  initials,
-  type Point,
-  truncate,
-} from './geometry';
+import { boardBounds, boardPositions, CENTER, edgeGeometry, initials, type Point, truncate } from './geometry';
 
 type Props = {
   club: Club;
@@ -382,6 +374,7 @@ export default function Diagram({
           }
         }}
       >
+        {!clean && <title>{tr('trace.creatorHint')}</title>}
         <circle r="57" fill="#EDF2FF" stroke="#4169E1" strokeWidth="1.5" strokeDasharray="3 5" />
         <circle r="46" fill="#173EA5" />
         <path

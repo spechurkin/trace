@@ -40,6 +40,7 @@ import {
   type Character,
   type CharacterFolder,
   type Club,
+  databaseSchema,
   deleteCharacter,
   deleteCharacterFolder,
   removeFromClub,
@@ -61,6 +62,7 @@ import { storage } from './storage';
 import { useLibrary } from './useLibrary';
 import {
   boardEdges,
+  CULPRIT,
   investigationTypes,
   kindOf,
   type NodeKind,
@@ -68,6 +70,8 @@ import {
 } from '../shared/investigation';
 import { BranchForm } from './InvestigationForms';
 import { BoardInspector } from './BoardInspector';
+import { InvestigationCreator } from './InvestigationCreator';
+import { messages as creatorMessages } from '../modules/investigation-creator/messages';
 
 type View = 'clubs' | 'characters' | 'evidence' | 'locations' | 'events' | 'settings';
 type Editor = {
@@ -120,6 +124,10 @@ export default function App() {
           ? 'event'
           : 'person';
   const [editor, setEditor] = useState<Editor | null>(null);
+  const [creator, setCreator] = useState<'create' | 'audit' | null>(null);
+  const [createUsingAssistant, setCreateUsingAssistant] = useState(false);
+  const creatorText = creatorMessages(locale);
+  const closeCreator = useCallback(() => setCreator(null), []);
   const [confirmation, setConfirmation] = useState<Confirmation | null>(null);
   const [selectedCharacter, setSelectedCharacter] = useState<string>();
   const [selectedEdge, setSelectedEdge] = useState<string>();
@@ -170,7 +178,10 @@ export default function App() {
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState('');
   const club = data?.clubs.find((c) => c.id === data.activeClubId) || data?.clubs[0];
-  const closeEditor = useCallback(() => setEditor(null), []);
+  const closeEditor = useCallback(() => {
+    setEditor(null);
+    setCreateUsingAssistant(false);
+  }, []);
   const clearSelection = () => {
     setSelectedCharacter(undefined);
     setSelectedEdge(undefined);
@@ -231,6 +242,7 @@ export default function App() {
       }));
   };
   const changeView = (next: View) => {
+    setCreator(null);
     setView(next);
     setSearch('');
     setExportMenu(false);
@@ -313,6 +325,10 @@ export default function App() {
     }
     setView('clubs');
     closeEditor();
+    if (createUsingAssistant) {
+      setCreator('create');
+      setCreateUsingAssistant(false);
+    }
   };
   const askDeleteCharacter = (character: Character) =>
     setConfirmation({
@@ -382,6 +398,11 @@ export default function App() {
     }
   };
   const pickCharacter = (id: string) => {
+    if (id === CULPRIT && !linking) {
+      setCreator(club?.characterIds.length ? 'audit' : 'create');
+      clearSelection();
+      return;
+    }
     if (linking && selectedCharacter && selectedCharacter !== id) {
       setEditor({ kind: 'connection', sourceId: selectedCharacter, targetId: id });
       setLinking(false);
@@ -608,7 +629,7 @@ export default function App() {
             <p>{subtitle}</p>
           </div>
           <div className="header-actions">
-            {view === 'clubs' && club && (
+            {view === 'clubs' && club && !creator && (
               <>
                 <div className="dropdown-wrap">
                   <button
@@ -839,7 +860,7 @@ export default function App() {
           </div>
         )}
 
-        {view === 'clubs' && (
+        {view === 'clubs' && !creator && (
           <div className="editor-layout">
             <section
               className={`canvas ${linking ? 'linking' : ''}`}
@@ -996,6 +1017,18 @@ export default function App() {
                       {tr('demo.explore')}
                     </button>
                   )}
+                  {!club && (
+                    <button
+                      className="button secondary"
+                      disabled={data.clubs.length >= BOARD_CREATION_LIMIT}
+                      onClick={() => {
+                        setCreateUsingAssistant(true);
+                        setEditor({ kind: 'club' });
+                      }}
+                    >
+                      {creatorText('title')}
+                    </button>
+                  )}
                   <div className="onboarding-steps">
                     <span>
                       <b>01</b>
@@ -1049,6 +1082,37 @@ export default function App() {
               }
             />
           </div>
+        )}
+
+        {creator && club && view === 'clubs' && (
+          <InvestigationCreator
+            key={club.id}
+            board={club}
+            nodes={data.characters}
+            folders={data.folders}
+            locale={locale}
+            audit={creator === 'audit'}
+            onClose={closeCreator}
+            onSave={(plan, members, close) => {
+              commit((current) => {
+                const updated = new Map(members.map((n) => [n.id, n]));
+                const existing = new Set(current.characters.map((n) => n.id));
+                return databaseSchema.parse({
+                  ...current,
+                  characters: [
+                    ...current.characters.map((n) => updated.get(n.id) || n),
+                    ...members.filter((n) => !existing.has(n.id)),
+                  ],
+                  clubs: current.clubs.map((c) =>
+                    c.id === club.id
+                      ? { ...c, characterIds: members.map((n) => n.id), investigation: plan }
+                      : c,
+                  ),
+                });
+              });
+              if (close) closeCreator();
+            }}
+          />
         )}
 
         {libraryView && (
