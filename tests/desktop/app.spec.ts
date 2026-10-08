@@ -44,11 +44,13 @@ async function persisted() {
 }
 
 async function drag(id: string, dx = 75, dy = 45) {
+  // The group includes a non-interactive label; target the circle at any SVG scale.
   const node = page.locator(`[data-node-id="${id}"]`);
-  const box = await node.boundingBox();
+  await node.hover();
+  const box = await node.locator('circle').first().boundingBox();
   if (!box) throw new Error('Missing node');
   const x = box.x + box.width / 2,
-    y = box.y + 32;
+    y = box.y + box.height / 2;
   await page.mouse.move(x, y);
   await page.mouse.down();
   await page.mouse.move(x + dx, y + dy, { steps: 10 });
@@ -303,48 +305,62 @@ test('create a board, all node types, guiding answers and both person roles with
   await expect(page.locator('.inspector')).toContainText('Fixed at the center');
 });
 
-test('dragging, locking, independent board layouts and reopening preserve saved positions', async () => {
-  setLocale('en');
-  await launch('en', demoDatabase());
-  await drag('domye');
-  let data = await persisted();
-  const first = data.clubs[0].layout!.domye;
-  expect(first.x).not.toBe(160);
-  await page.locator('[data-node-id="domye"]').click();
-  await page.getByRole('button', { name: 'Lock position', exact: true }).click();
-  await persisted();
-  await drag('domye', 90, -30);
-  data = await persisted();
-  expect(data.clubs[0].layout!.domye.x).toBe(first.x);
-  await page.getByRole('button', { name: 'Unlock position', exact: true }).click();
-  await drag('domye', 30, 20);
-  const moved = (await persisted()).clubs[0].layout!.domye;
-  expect(moved.x).not.toBe(first.x);
-  const center = await page.locator('[data-node-id="__culprit__"]').getAttribute('transform');
-  await drag('__culprit__');
-  expect(await page.locator('[data-node-id="__culprit__"]').getAttribute('transform')).toBe(center);
-  // A new board uses an independent layout for the same library nodes.
-  await page.getByRole('button', { name: 'New board', exact: true }).click();
-  await page.getByRole('dialog').getByLabel('Board name').fill('Second board');
-  await page.getByRole('button', { name: 'Create board', exact: true }).click();
-  await page.locator('.inspector').getByRole('button', { name: 'Add nodes', exact: true }).click();
-  await page.getByRole('dialog').getByRole('checkbox').first().check();
-  await page
-    .getByRole('dialog')
-    .getByRole('button', { name: /Add to board/ })
-    .click();
-  data = await persisted();
-  expect(data.clubs[1].layout).toEqual({});
-  await page.locator('.club-list-item').first().click();
-  await persisted();
-  await app.close();
-  await reopen();
-  expect((await persisted()).clubs[0].layout!.domye).toEqual(moved);
-  await expect(page.locator('[data-node-id="domye"]')).toHaveAttribute(
-    'transform',
-    `translate(${moved.x}, ${moved.y})`,
-  );
-});
+for (const height of [1000, 950]) {
+  test(`dragging, locking, independent board layouts and reopening preserve saved positions at ${height}px window height`, async () => {
+    setLocale('en');
+    await launch('en', demoDatabase());
+    await app.evaluate(
+      ({ BrowserWindow }, height) => BrowserWindow.getAllWindows()[0].setSize(1500, height),
+      height,
+    );
+    await drag('domye');
+    let data = await persisted();
+    const first = data.clubs[0].layout!.domye;
+    expect(first.x).not.toBe(160);
+    expect(first.y).not.toBe(210);
+    await page.locator('[data-node-id="domye"]').click();
+    await page.getByRole('button', { name: 'Lock position', exact: true }).click();
+    await persisted();
+    await drag('domye', 90, -30);
+    data = await persisted();
+    expect(data.clubs[0].layout!.domye.x).toBe(first.x);
+    expect(data.clubs[0].layout!.domye.y).toBe(first.y);
+    await page.getByRole('button', { name: 'Unlock position', exact: true }).click();
+    await drag('domye', 30, 20);
+    const moved = (await persisted()).clubs[0].layout!.domye;
+    expect(moved.x).not.toBe(first.x);
+    expect(moved.y).not.toBe(first.y);
+    const center = await page.locator('[data-node-id="__culprit__"]').getAttribute('transform');
+    await drag('__culprit__');
+    expect(await page.locator('[data-node-id="__culprit__"]').getAttribute('transform')).toBe(
+      center,
+    );
+    // A new board uses an independent layout for the same library nodes.
+    await page.getByRole('button', { name: 'New board', exact: true }).click();
+    await page.getByRole('dialog').getByLabel('Board name').fill('Second board');
+    await page.getByRole('button', { name: 'Create board', exact: true }).click();
+    await page
+      .locator('.inspector')
+      .getByRole('button', { name: 'Add nodes', exact: true })
+      .click();
+    await page.getByRole('dialog').getByRole('checkbox').first().check();
+    await page
+      .getByRole('dialog')
+      .getByRole('button', { name: /Add to board/ })
+      .click();
+    data = await persisted();
+    expect(data.clubs[1].layout).toEqual({});
+    await page.locator('.club-list-item').first().click();
+    await persisted();
+    await app.close();
+    await reopen();
+    expect((await persisted()).clubs[0].layout!.domye).toEqual(moved);
+    await expect(page.locator('[data-node-id="domye"]')).toHaveAttribute(
+      'transform',
+      `translate(${moved.x}, ${moved.y})`,
+    );
+  });
+}
 
 test('branch editing updates the tree and automatic colors, then changing roles updates person colors', async () => {
   setLocale('en');
