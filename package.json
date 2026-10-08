@@ -1,0 +1,109 @@
+{
+  "name": "trace",
+  "productName": "Trace",
+  "version": "1.0.0",
+  "description": "Offline investigation builder",
+  "author": "HoloLight17",
+  "license": "MIT",
+  "type": "module",
+  "main": "dist-electron/main.cjs",
+  "scripts": {
+    "postinstall": "node node_modules/electron/install.js",
+    "dev": "node scripts/dev.mjs",
+    "dev:web": "vite --host 127.0.0.1",
+    "typecheck": "tsc --noEmit",
+    "format": "prettier --write src shared electron tests scripts/*.mjs *.json *.ts *.html README.md .github/workflows/*.yml",
+    "build": "npm run typecheck && vite build && node scripts/build-electron.mjs",
+    "test": "vitest run",
+    "test:desktop": "npm run build && playwright test",
+    "test:packaged": "node scripts/test-packaged.mjs",
+    "test:stress": "vitest run tests/stress.test.ts",
+    "test:audit:desktop": "npm run build && playwright test --config playwright.audit.config.ts",
+    "test:audit:browser": "npm run build && playwright test --config playwright.browser.config.ts",
+    "dist": "npm run build && electron-builder",
+    "dist:win": "npm run build && electron-builder --win",
+    "dist:mac": "npm run build && electron-builder --mac",
+    "dist:linux": "npm run build && electron-builder --linux"
+  },
+  "dependencies": {
+    "@fontsource-variable/manrope": "5.3.0",
+    "lucide-react": "1.49.0",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0",
+    "@types/node": "24.19.0",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "6.1.1",
+    "electron": "44.5.1",
+    "electron-builder": "26.15.3",
+    "esbuild": "0.28.2",
+    "prettier": "3.9.9",
+    "typescript": "7.0.2",
+    "vite": "8.3.1",
+    "vitest": "5.0.3"
+  },
+  "build": {
+    "appId": "studio.trace.investigations",
+    "productName": "Trace",
+    "directories": {
+      "output": "release/Trace",
+      "buildResources": "resources"
+    },
+    "files": [
+      "dist/**/*",
+      "dist-electron/**/*",
+      "resources/icon.png",
+      "package.json"
+    ],
+    "asar": true,
+    "npmRebuild": false,
+    "artifactName": "Trace-${version}-${os}-${arch}.${ext}",
+    "win": {
+      "executableName": "Trace",
+      "target": [
+        "nsis",
+        "portable"
+      ],
+      "icon": "resources/icon.ico",
+      "signExecutable": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "deleteAppDataOnUninstall": false,
+      "artifactName": "Trace-${version}-windows-setup.${ext}",
+      "displayLanguageSelector": true,
+      "installerLanguages": [
+        "en_US",
+        "ru_RU"
+      ]
+    },
+    "portable": {
+      "artifactName": "Trace-${version}-windows-portable.${ext}"
+    },
+    "mac": {
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "category": "public.app-category.graphics-design",
+      "icon": "resources/icon.png"
+    },
+    "linux": {
+      "executableName": "Trace",
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "Graphics",
+      "icon": "resources/icon.png",
+      "maintainer": "Trace"
+    }
+  }
+}

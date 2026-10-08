@@ -1,0 +1,10 @@
+node_modules
+dist
+dist-electron
+release
+test-results
+.test-data
+.cache
+package-lock.json
+resources
+.idea

@@ -1,0 +1,159 @@
+@media (max-width: 1280px) {
+    .app-shell {
+        grid-template-columns: 70px 211px minmax(0, 1fr);
+    }
+
+    .sidebar {
+        padding: 27px 17px 17px;
+    }
+
+    .rail-button {
+        width: 57px;
+    }
+
+    .rail-button span {
+        font-size: 7px;
+    }
+
+    .editor-layout {
+        grid-template-columns: minmax(0, 1fr) 235px;
+    }
+
+    .topbar {
+        padding: 20px 23px;
+    }
+
+    .header-actions {
+        gap: 7px;
+    }
+
+    .header-actions .button {
+        padding: 9px 11px;
+        font-size: 10px;
+    }
+
+    .page-heading h1 {
+        font-size: 22px;
+    }
+
+    .page-heading > p {
+        max-width: 320px;
+    }
+
+    .canvas-meta {
+        font-size: 6px;
+    }
+
+    .canvas-top {
+        left: 18px;
+        right: 18px;
+    }
+
+    .canvas-tool {
+        font-size: 8px;
+        padding: 7px;
+    }
+
+    .inspector-tabs {
+        padding: 0 16px;
+        gap: 14px;
+    }
+
+    .inspector-tabs > button {
+        font-size: 10px;
+    }
+
+    .inspector-content {
+        padding: 20px 15px;
+    }
+
+    .member-main strong {
+        font-size: 9px;
+    }
+
+    .character-detail {
+        padding: 25px 18px;
+    }
+
+    .character-detail .button {
+        padding: 7px 9px;
+    }
+
+    .library-page,
+    .settings-page {
+        padding: 25px;
+    }
+
+    .breadcrumb {
+        font-size: 6px;
+    }
+
+    .brand-caption {
+        font-size: 6px;
+    }
+}
+
+@media (max-height: 790px) {
+    .topbar {
+        height: 106px;
+        min-height: 106px;
+    }
+
+    .sidebar-brand {
+        margin-bottom: 32px;
+    }
+
+    .sidebar-relations {
+        margin-top: 19px;
+        padding-top: 17px;
+    }
+
+    .empty-orbit {
+        width: 150px;
+        height: 150px;
+        margin-bottom: 6px;
+    }
+
+    .empty-orbit svg {
+        width: 90px;
+        height: 90px;
+    }
+
+    .onboarding-steps {
+        margin-top: 30px;
+    }
+
+    .canvas-empty > p {
+        margin: 15px 0 20px;
+    }
+
+    .canvas-top {
+        top: 17px;
+    }
+
+    .canvas-bottom {
+        bottom: 16px;
+    }
+
+    .inspector-tip {
+        padding: 12px;
+    }
+
+    .inspector-tip span {
+        font-size: 8px;
+    }
+
+    .canvas-empty h2 {
+        font-size: 28px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *:before,
+    *:after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}

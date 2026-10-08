@@ -1,0 +1,364 @@
+{
+  "name": "The dead witness",
+  "description": "Shestaprel. Former policeman Gerard Valk lies dead beneath his windows; his apartment door is broken and a folder is missing. A 1–3 session case based on The Dead Witness. This GM board contains the solution.\nI. Courtyard and apartment: body, window, door and missing folder. II. Last night: Celine, Domye, calls and drafts. III. Late visitor: Remi, wet footprints and the search for Loro. IV. The Korren case: alive at 02:40, officially dead at 02:31. V. Conclusion: facts and the fate of the documents.\nTruth: Valk jumped at 02:16; Domye left at 22:25; Loro broke in at 02:38 for the folder. Valk has no physical murderer. The central Culprit represents responsibility for the old crime and pressure. Branches represent investigative leads; a suspect role represents a theory to test.\nStart with 07:05 · Body discovered, then follow the five branches. Answers separate facts, statements and contradictions; the final node offers five outcomes. Establish conclusions by comparing clues rather than treating any one as conclusive.",
+  "folders": {
+    "person": "People and roles",
+    "evidence": "Clues and documents",
+    "location": "Locations",
+    "event": "Timeline and conclusion"
+  },
+  "nodes": {
+    "domye": {
+      "name": "Henri Domye",
+      "notes": "Valk's former partner, now an influential policeman. Suspect in intimidation and the old cover-up; witness to the last evening. His departure disproves the theory that he pushed Valk. 'I explained the consequences.'",
+      "answers": [
+        "A tired, meticulous senior policeman. Participated in covering up Mathias Korren's death eight years ago; knows the significance of Valk's signature.",
+        "Preserve his career and the official story. Arrived at 21:35 to persuade Valk to destroy the papers. This explains intimidation, but does not prove murder.",
+        "Left at 22:25, before the fall at 02:16. A woman on the stairs confirms his departure; a tram route provides indirect corroboration, not sole proof.",
+        "Initially denies visiting, then admits an argument and calls Valk drunk and hysterical. Confronted with the folder, he must explain the decisions behind the Korren report.",
+        "Neighbors contradict his denial; medical findings and the bartender contradict his claim of drunkenness. Suicide does not erase responsibility for intimidation or the old cover-up."
+      ]
+    },
+    "valk": {
+      "name": "Gerard Valk",
+      "notes": "57-year-old former policeman: victim in the present case, accomplice in the old one. Did not deliver Korren's fatal blows, but rewrote the report. Later tried to expose the truth. Remorse does not establish innocence.",
+      "answers": [
+        "Lived alone, worked as a guard, drank heavily and wrote municipal complaints. Left the police after threats to make him solely responsible for falsification; remained silent for years.",
+        "Loro returned the documents. Two weeks before death Valk stopped drinking, bought paper and a folder, borrowed a typewriter and prepared a confession. Wanted disclosure but feared the consequences.",
+        "At home after the evening meetings. Wrote and called between 23:00 and 01:40; stepped out of the window himself at 02:16. Neither Domye nor Loro was there.",
+        "No living interview is possible. His written statement: 'Korren was alive at 02:40. I saw it. My signature is on the claim that he died earlier.' Drafts and the folder allow verification.",
+        "His signature enabled the cover-up. Recent sobriety contradicts his reputation as a drunk. His final decision cannot be reduced to one conversation."
+      ]
+    },
+    "loro": {
+      "name": "Etienne Loro",
+      "notes": "Former archivist, keeper of the folder and the night intruder. Both witness and suspect in the break-in. 'I wasn't saving Valk. I was saving the paper.' He is not a murderer.",
+      "answers": [
+        "A meticulous former archivist. Accessed surviving boxes during reconstruction and found the original Korren documents.",
+        "Preserve evidence the police might destroy. Under the contingency plan, collect the folder if Valk does not call by two. Came for papers, not valuables.",
+        "Arrived at 02:35 and broke in at 02:38, after the 02:16 fall. Check his admission against Remi, footprints and the route; confession alone is insufficient.",
+        "Gave Valk the folder, then recovered it. Saw an open window, went to the desk and left. Hides for fear of document destruction and a burglary charge.",
+        "Flight looks suspicious, but footprints do not approach the window and door blows followed the fall. May destroy some papers if he believes the investigators serve Domye."
+      ]
+    },
+    "celine": {
+      "name": "Celine Marot",
+      "notes": "Journalist and witness to publication plans; an early suspect because she wants the folder. Her evasiveness protects sources. 'He wanted the paper to outlive those who made him keep quiet.'",
+      "answers": [
+        "A young, stubborn journalist. Met Valk four times while preparing a story about Korren's death; does not romanticize Valk.",
+        "Obtain documents and publish a verifiable story. Interest in the folder explains suspicion, not a proven night visit or responsibility for suicide.",
+        "Met Valk at the cafe at 20:10; did not visit the apartment that night. Was meant to await his call, but fell asleep or disconnected the phone. The GM chooses; the source leaves this open.",
+        "Confirms four meetings and a handover planned for the next morning. Knows about the confession; compare her account with the waiter, calls and drafts.",
+        "Initially claims only a passing acquaintance to protect materials from police. An incomplete story is not murder. May publish a premature notice and make the case public."
+      ]
+    },
+    "remi": {
+      "name": "Remi Falk",
+      "notes": "Unemployed dockworker living one floor below Valk. Witness to the order of sounds: fall, then door. Fears admitting coal theft. 'That's why I was asleep.'",
+      "answers": [
+        "A nervous neighbor. In the courtyard that night because he was stealing coal from the basement store.",
+        "Avoid a theft charge and police attention. His lie has an everyday cause; the source establishes no connection to the folder or Korren's death.",
+        "In the courtyard at 02:16; heard a fall and later blows on the apartment door. His location explains hearing both.",
+        "After abandoning 'I slept all night', describes the order of sounds. This identifies a late visitor; compare with medical and physical evidence.",
+        "His initial lie weakens trust. Do not accept an exact minute on his word alone; the corroborated order, fall → break-in, matters."
+      ]
+    },
+    "elisa": {
+      "name": "Elisa Korren",
+      "notes": "Mathias's daughter. Recipient of an attempted confession and possible recipient of the folder. Knew nothing about the new papers. 'He should have done it while my mother was still alive.'",
+      "answers": [
+        "Mathias Korren's adult daughter. Grew up with the official story; her mother died before Valk's attempt to apologize.",
+        "Learn the truth without having her family used again. May refuse to give up letters until investigators explain their need eight years later.",
+        "Not present at Valk's death or the break-in. The source gives no precise location; do not invent a verified alibi.",
+        "Valk tried calling before death but could not begin the conversation. She knew nothing of the folder; confirms the family number in the phone trail.",
+        "Distrust of police is not involvement. A family call may seem personal but leads to Korren's identity and the old case."
+      ]
+    },
+    "mathias": {
+      "name": "Mathias Korren",
+      "notes": "Worker killed after a beating in Precinct 6 eight years ago. His witness branch represents documentary evidence: no living interview. The source does not name the person who delivered the fatal blows.",
+      "answers": [
+        "Young worker and Elisa's father. Arrested after a street conflict and brought to the precinct alive.",
+        "His motives in the conflict are unspecified. A victim of an old police crime; no basis for assigning him a criminal plan.",
+        "Original records register him alive at Precinct 6 at 02:40. The official version places death during escape at 02:31 and denies delivery.",
+        "Cannot testify after death. The log, report and Valk's confession establish a beating during interrogation and 'pacification', followed by death inside the precinct.",
+        "The records are nine minutes apart and incompatible. Date, actual death time and attackers' names are unspecified; Valk's signature proves falsification, not that he struck fatal blows."
+      ]
+    },
+    "body": {
+      "name": "Valk's body examination",
+      "notes": "Medical evidence challenges a convenient drunken fall and does not support a fight. A voluntary jump requires comparison with the window, tracks and chronology.",
+      "answers": [
+        "Courtyard beneath the fourth-floor apartment, after discovery at 07:05.",
+        "Gerard Valk's body; findings recorded through patrol response and medical examination.",
+        "Injuries fit a fall. No signs of a beating immediately before death. No alcohol or only minimal traces; ink and paper dust on his fingers.",
+        "He was writing and was not the drunk described by Domye. Compare drafts, the bartender and the sill print.",
+        "No fight marks alone cannot prove suicide. Check physical evidence and sound order; do not claim an exact medical death time absent from the source."
+      ]
+    },
+    "door": {
+      "name": "Broken apartment door",
+      "notes": "Initially suggests murder with forced entry. Splinters establish the order of traces; Remi establishes the order of events. LOGIC: 'The splinters lie on top of the story.'",
+      "answers": [
+        "Entrance to Valk's fourth-floor apartment.",
+        "Valk's door, broken by Loro during the late entry.",
+        "Lock smashed from outside. Splinters and varnish over earlier hall traces; water and dirt from another sole on fresh splinters. No fight at the entrance.",
+        "Entry followed Valk's return home. To establish entry after death, add Remi and the wet footprint path; a splinter cannot tell you 02:38.",
+        "Do not confuse relative trace order with the time of death. The murderer-at-the-door theory survives until the night is reconstructed."
+      ]
+    },
+    "tracks": {
+      "name": "Wet footprints",
+      "notes": "Visitor's route: door → desk → door, without approaching the window. VISUAL CALCULUS: 'Someone came for something flat and made of paper.'",
+      "answers": [
+        "Hall and desk; no fresh wet prints immediately by the window.",
+        "Etienne Loro's tracks. Their owner is initially unknown.",
+        "Water and dirt after night rain. Route from door to desk and back; some dirt on fresh splinters.",
+        "The target was the desk and folder. Challenges a struggle by the window and connects entry to missing papers.",
+        "Requires close inspection. No wet print does not exclude every possible second person; compare window, Remi and Loro's admission."
+      ]
+    },
+    "window": {
+      "name": "Window sill traces",
+      "notes": "Tests the 'pushed out' theory. Distinguishes observed traces from the final conclusion.",
+      "answers": [
+        "Open fourth-floor window above the body.",
+        "Valk's apartment; the only recorded shoe print is his.",
+        "Opened from inside; no forced opening or struggle. A print in a useful position for stepping out; the wet visitor's path does not reach it.",
+        "Consistent with a voluntary jump at 02:16. Compare body, Domye's departure and Loro's late arrival.",
+        "Not a standalone suicide test. Assess absence of a second person alongside chronology and the footprint route."
+      ]
+    },
+    "missingFolder": {
+      "name": "Missing folder's outline",
+      "notes": "Shows the entry motive before meeting Loro. A dust rectangle and untouched valuables challenge ordinary burglary.",
+      "answers": [
+        "Apartment desk during the first examination.",
+        "Valk's folder containing Loro's materials lay here.",
+        "Clean rectangle in dust. Money, watch, radio and other obvious valuables remain.",
+        "Visitor wanted papers. Leads to handover preparations, the contingency note and an archivist, not a market for stolen valuables.",
+        "Proves absence of an object, not contents or taker. Drafts, Celine, the note and the recovered folder establish those."
+      ]
+    },
+    "drafts": {
+      "name": "Unfinished confession",
+      "notes": "Handout from torn sheets and the typewriter. Valk admits his signature; the folder explains the name and context.",
+      "answers": [
+        "Torn drafts in a drawer and one sheet in the borrowed typewriter.",
+        "Gerard Valk. Ink and paper dust on his fingers fit overnight writing.",
+        "'I do not ask you to consider me a good man. A good man does not wait eight years.' Repeated phrases: '02:40', 'he was alive', 'my signature'. He states that he saw Korren alive at 02:40.",
+        "Leads to the old case and the author's complicity in rewriting the report. He was preparing testimony, not merely a personal note.",
+        "A draft is not verified testimony about every participant. The log and final report must independently confirm the time contradiction."
+      ]
+    },
+    "agreement": {
+      "name": "Loro's contingency note",
+      "notes": "Handout explains the agreed purpose of a night visit. The recipient still needs identification before meeting Loro.",
+      "answers": [
+        "Separate draft sheet among Valk's materials; its exact location is unspecified.",
+        "Valk's note to Loro; the archivist confirms recipient and agreement.",
+        "'If I do not call by two, take the folder. Do not trust anyone who says there is nothing in it.'",
+        "Explains the 02:35 visit and choice of folder. A handover condition, not an order to kill Valk or knowledge of his future jump.",
+        "Does not date the entry. Compare Loro, traces and Remi; do not invent a signature or forensic examination."
+      ]
+    },
+    "calls": {
+      "name": "Telephone trail",
+      "notes": "Two leads: journalist and Korren's family. Do not invent minute marks for individual calls.",
+      "answers": [
+        "Telephone log and crumpled note with numbers in Valk's pocket.",
+        "Valk's calls; Celine Marot's and the Korren family's numbers.",
+        "Between 23:00 and 01:40 called the journalist and tried Elisa. Could not begin the conversation with Korren's daughter.",
+        "Supports planned disclosure and attempted family contact. Elisa identifies the man behind 'he was alive'.",
+        "The log establishes attempts, not conversation content. Celine and Elisa explain meaning; individual call times are absent."
+      ]
+    },
+    "folder": {
+      "name": "Folder held by Loro",
+      "notes": "Missing from the apartment, recovered with the archivist. Connects the current death to the old case; preserve copies before deciding its fate.",
+      "answers": [
+        "With Loro in hiding after entry. Before meeting him, only the disappearance is known.",
+        "Loro found the documents, gave them to Valk and recovered them under the plan at 02:38.",
+        "Original report and registration of Korren alive at 02:40. Compare with the report of death at 02:31.",
+        "Proves incompatibility of official chronology with original records. Explains entry and Domye's pressure.",
+        "Verify archive provenance and preserve originals and copies. Does not automatically name all attackers or excuse Valk's signature."
+      ]
+    },
+    "journal": {
+      "name": "Korren alive at 02:40",
+      "notes": "Original log extract in the folder. Verifiable contradiction: nine minutes between a living detainee and official death.",
+      "answers": [
+        "Original archive documents in Loro's folder.",
+        "Precinct 6 registration for Korren's case.",
+        "'02:40 — detainee M. Korren delivered. Conscious, satisfactory condition. Handed over to the duty team.'",
+        "Delivered alive: death before delivery at 02:31 is impossible. Compare the report and Valk's testimony.",
+        "Time in a primary record; subsequent death time is unspecified. The archivist establishes provenance and preservation."
+      ]
+    },
+    "report": {
+      "name": "Death report at 02:31",
+      "notes": "Official account rewritten and signed by Valk. The administrative cover-up of a crime.",
+      "answers": [
+        "Official Korren case file, compared with the folder.",
+        "Police report: Valk rewrote it and signed a key version.",
+        "'02:31 — M. Korren suffered fatal injuries while attempting to escape arrest. No delivery to the precinct took place.'",
+        "Conceals death after a beating inside the precinct. Contradicts living registration at 02:40 by nine minutes; establishes the significance of Valk's signature.",
+        "Official status does not guarantee truth. The contradiction alone does not identify the direct killer or precise death minute."
+      ]
+    },
+    "apartment": {
+      "name": "Valk's apartment",
+      "notes": "Entrance, desk and window reveal different parts of the story. Position locked as an example; other nodes can be dragged.",
+      "answers": [
+        "Fourth floor in Shestaprel. Street and building number unspecified.",
+        "Valk lived alone. Domye visited in the evening; Loro entered through the broken door. Window opened from inside.",
+        "Drafts and typewriter, missing folder, untouched valuables. Door damaged from outside; no fight at entrance or window.",
+        "Compare splinters, wet shoes, dust rectangle and sill print. Distinguish domestic from fresh traces.",
+        "Domye 21:35–22:25; writing 23:00–01:40; jump 02:16; Loro arrives 02:35, breaks in 02:38. Examination after discovery at 07:05."
+      ]
+    },
+    "courtyard": {
+      "name": "Inner courtyard",
+      "notes": "Body location and Remi's observation point. The neighbor's account changes the event order.",
+      "answers": [
+        "Beneath Valk's windows, connected to the fourth-floor apartment.",
+        "Caretaker and residents. Remi came for basement coal; exact access rules unspecified.",
+        "Body beneath the window. Discovered in the morning; patrol arrives. Rain during the night.",
+        "Position compared with injuries. Remi hears a fall, then later door blows.",
+        "02:16 fall; later door blows; 07:05 discovery. Verify Remi's account rather than treating him as an infallible clock."
+      ]
+    },
+    "cafe": {
+      "name": "Cheap cafe",
+      "notes": "Independent source for the Celine meeting. The waiter remains unnamed, as in the source.",
+      "answers": [
+        "Cafe where Valk and Celine met. Address and name unspecified.",
+        "Customers and waiter. No access restrictions specified.",
+        "At 20:10 discussed a handover next morning, before Domye's visit.",
+        "Waiter confirms the meeting. Check content with Celine and papers; do not automatically assign overheard conversation to the waiter.",
+        "20:10 meeting; 21:35 Domye at Valk's home. Handover was planned for morning, not completed that night at the cafe."
+      ]
+    },
+    "archive": {
+      "name": "Old archive",
+      "notes": "Why the case resurfaced. ENCYCLOPEDIA: 'Too many people fond of the word lost.'",
+      "answers": [
+        "Old police building room opened during reconstruction, supposedly cleared.",
+        "Workers opened it; Loro accessed boxes. Permission details unspecified.",
+        "Some records survived closure. A copy of the original Korren report in the boxes.",
+        "Folder provenance and original chronology. Check connection to official case and Valk's signature.",
+        "Old case eight years ago. Discovery before Valk's death triggers preparation; exact day unspecified."
+      ]
+    },
+    "precinct": {
+      "name": "Precinct 6",
+      "notes": "Site of Korren's actual death. Attackers and leaders need separate identification; no complete list is given.",
+      "answers": [
+        "Precinct 6 in Shestaprel. Street address unspecified.",
+        "Patrol delivered detainee to duty team. Staff had access; participants' present positions unspecified.",
+        "Arrived alive, beaten during interrogation and 'pacification', died inside. Staff and leaders rewrote events.",
+        "Log and original report contradict final account. Valk saw Korren alive, then signed the false version.",
+        "Eight years ago: alive at 02:40 → beating and death → falsification. Report moves death to 02:31 before delivery."
+      ]
+    },
+    "pressure": {
+      "name": "21:35–22:25 · Domye",
+      "notes": "Phase II: the obvious suspect. Lies reveal pressure; checking his departure rules out physical murder.",
+      "answers": [
+        "Last night, 21:35–22:25.",
+        "Arrived, argued loudly, urged destruction of papers and left without the folder.",
+        "Valk, Domye, neighbors. A woman saw departure; tram route checked indirectly.",
+        "Publication threatened the cover-up and Domye's position. Administrative language masks pressure.",
+        "Lies prompt investigation. Departure before 02:16 disproves 'pushed him', but leaves intimidation and the old cover-up."
+      ]
+    },
+    "meeting": {
+      "name": "20:10 · Celine meeting",
+      "notes": "Phase II: Valk planned to hand over papers alive. Publication plans connect his last days with the folder.",
+      "answers": [
+        "20:10 last night, before Domye's visit.",
+        "One of four meetings at the cafe; handover scheduled next morning.",
+        "Valk and Celine; waiter confirms meeting.",
+        "Loro's papers offered a chance to expose the case. Celine prepared publication; Valk a confession.",
+        "Death cancels handover. Calls and Celine show intent to disclose; her interest initially creates a false lead."
+      ]
+    },
+    "writing": {
+      "name": "23:00–01:40 · Confession",
+      "notes": "Final hours: writing and failed conversations. Do not replace testimony with an invented cause for his final decision.",
+      "answers": [
+        "23:00–01:40, after Domye left.",
+        "Rewrote confession, called journalist and Korren's daughter. Torn sheets and a typewriter page remain.",
+        "Valk; Celine and Elisa as recipients; telephone and writing as corroboration.",
+        "Desire to expose complicity met fear, guilt and pressure. The source does not attribute suicide to one remark.",
+        "Drafts lead to 02:40 and signature. No call by two activates Loro's contingency plan."
+      ]
+    },
+    "fall": {
+      "name": "02:16 · Valk's jump",
+      "notes": "Phase I → III: no physical murderer. Established through body, window, Remi and visitor times; continue by tracing the papers.",
+      "answers": [
+        "02:16, before Loro's arrival at 02:35 and entry at 02:38.",
+        "Valk jumped voluntarily from fourth floor. No struggle or other person by the window established.",
+        "Valk; Remi heard fall. Domye had left; Loro had not arrived.",
+        "Old guilt and pressure surround the decision; no physical push occurred. Not merely an ordinary drunken domestic tragedy.",
+        "Suicide established; entry and disappearance still need explanation. Sequence directs inquiry toward the late visitor."
+      ]
+    },
+    "intrusion": {
+      "name": "02:35–02:38 · Break-in",
+      "notes": "Phase III: the key fugitive. Folder and event order change the meaning of Loro's actions.",
+      "answers": [
+        "02:35 arrival; 02:38 entry. After death at 02:16.",
+        "Broke door, saw open window, took folder and left. Left valuables and did not approach window.",
+        "Loro. Remi heard late blows; wet tracks and splinters confirm entry.",
+        "No call by two: collect documents. Feared police destruction.",
+        "Entry and disappearance resembled murder. Search through archive, transport, acquaintances and Celine opens the old case."
+      ]
+    },
+    "discovery": {
+      "name": "07:05 · Body discovered",
+      "notes": "Investigation starts here. Patrol favors a domestic explanation; the apartment shows why that is incomplete.",
+      "answers": [
+        "07:05 the next morning.",
+        "Caretaker found body; patrol arrived. Investigators examine courtyard and apartment.",
+        "Unnamed caretaker, patrol and player investigators. Immediate superior unspecified.",
+        "Fall at 02:16 went undiscovered until morning. Broken door and folder turn death examination into a full case.",
+        "Theories: forced-entry murder, burglary, drunken suicide. Medical findings and apartment lead to reconstruction."
+      ]
+    },
+    "oldCase": {
+      "name": "8 years ago · Korren",
+      "notes": "Phase IV: concealed crime. Distinguish attackers from those who signed and upheld the false story.",
+      "answers": [
+        "Eight years ago. Living delivery at 02:40, official death at 02:31; calendar date and actual death minute unspecified.",
+        "Arrested, delivered, beaten and died inside. Staff and leaders presented death as an escape attempt.",
+        "Korren, patrol, duty team and cover-up organizers. Domye participated; Valk rewrote the report but did not deliver fatal blows. Complete list absent.",
+        "Beating caused death; fear of scandal caused falsification. Valk's attempt to reopen it was suppressed by threatening to blame him alone.",
+        "Family lived with lies for eight years. Recovered papers show the present suicide cannot be described without old guilt and pressure."
+      ]
+    },
+    "archiveFind": {
+      "name": "Before death · Discovery",
+      "notes": "Story trigger: paper survived the archive and restored the opportunity to testify.",
+      "answers": [
+        "Before last night, during reconstruction. Date unspecified; changed behavior visible two weeks before death.",
+        "Workers opened room, Loro found report, contacted Valk and handed over folder.",
+        "Workers, Loro, Valk; later Celine.",
+        "Some papers were not destroyed. Original chronology differs from official account.",
+        "Valk stopped drinking, bought paper, borrowed a typewriter, met Celine and sought the family. Publication prompted Domye's new visit."
+      ]
+    },
+    "conclusion": {
+      "name": "Conclusion · What to file?",
+      "notes": "Phase V. Facts are nearly unambiguous; moral choice remains disputed. Preserve evidence, then choose recipients. Superiors may pressure, statements may be 'lost', publication may outrun inquiry.",
+      "answers": [
+        "After meeting Loro, comparing 02:31/02:40 and checking the night. A conclusion, not a predetermined dated event.",
+        "Established: Valk jumped; Loro broke in later for papers; Domye pressured but left; Korren arrived alive; Valk signed lies. Direct attackers still need identification.",
+        "Investigators, superiors, Domye, Loro, Celine, Elisa. Never gate essential facts behind one roll: failure changes cost, delay or discovery channel.",
+        "Formal report: suicide, Loro's entry, separate old case — risk of suppressing scandal. Unified political report: connect death to pressure and cover-up — harder to defend wording. Choice does not change physical facts.",
+        "Give Celine papers: publicity preserves them but loses nuance. Give Elisa papers: family chooses but is vulnerable. Copy to several parties: harder to destroy, consequences less controlled. With the two reports, five outcomes without a single correct answer."
+      ]
+    }
+  }
+}

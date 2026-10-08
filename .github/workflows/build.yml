@@ -1,0 +1,202 @@
+name: Build and release
+
+on:
+  push:
+    branches: [ main, master ]
+    tags: [ 'v*' ]
+  pull_request:
+  workflow_dispatch: { }
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.ref_type != 'tag' }}
+
+env:
+  CI: 'true'
+
+jobs:
+  checks:
+    name: Validate and test
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Validate package and tag versions
+        id: version
+        run: node .github/scripts/check-version.mjs
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check TypeScript
+        run: npm run typecheck
+
+      - name: Run unit tests
+        run: npm test
+
+      - name: Test release automation
+        run: node --test .github/scripts/ci.test.mjs
+
+  build:
+    name: Package and test (${{ matrix.platform }}-${{ matrix.arch }})
+    needs: checks
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-2025
+            platform: windows
+            arch: x64
+            args: --win --x64
+            executable: release/Trace/win-unpacked/Trace.exe
+          - os: macos-15-intel
+            platform: macos
+            arch: x64
+            args: --mac --x64
+            executable: release/Trace/mac/Trace.app/Contents/MacOS/Trace
+          - os: macos-15
+            platform: macos
+            arch: arm64
+            args: --mac --arm64
+            executable: release/Trace/mac-arm64/Trace.app/Contents/MacOS/Trace
+          - os: ubuntu-24.04
+            platform: linux
+            arch: x64
+            args: --linux --x64
+            executable: release/Trace/linux-unpacked/Trace
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Linux desktop dependencies
+        if: runner.os == 'Linux'
+        run: npx playwright install-deps chromium
+
+      - name: Build application
+        run: npm run build
+
+      - name: Package application
+        run: npx electron-builder ${{ matrix.args }} --publish never
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+
+      - name: Test packaged application on Windows and macOS
+        if: runner.os != 'Linux'
+        run: npx playwright test --reporter=list,html
+        env:
+          TRACE_TEST_EXECUTABLE: ${{ github.workspace }}/${{ matrix.executable }}
+          PLAYWRIGHT_HTML_OPEN: never
+
+      - name: Test packaged application on Linux
+        if: runner.os == 'Linux'
+        run: xvfb-run --auto-servernum npx playwright test --reporter=list,html
+        env:
+          TRACE_TEST_EXECUTABLE: ${{ github.workspace }}/${{ matrix.executable }}
+          PLAYWRIGHT_HTML_OPEN: never
+
+      - name: Upload desktop test reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: desktop-tests-${{ matrix.platform }}-${{ matrix.arch }}
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Upload distribution packages
+        uses: actions/upload-artifact@v7
+        with:
+          name: Trace-${{ matrix.platform }}-${{ matrix.arch }}
+          path: |
+            release/Trace/*.exe
+            release/Trace/*.dmg
+            release/Trace/*.zip
+            release/Trace/*.AppImage
+            release/Trace/*.deb
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
+
+  ci:
+    name: CI
+    if: always()
+    needs: [ checks, build ]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Require all checks and packages to pass
+        env:
+          CHECKS_RESULT: ${{ needs.checks.result }}
+          BUILD_RESULT: ${{ needs.build.result }}
+        run: |
+          test "$CHECKS_RESULT" = success
+          test "$BUILD_RESULT" = success
+
+  release:
+    name: Publish GitHub release
+    if: github.ref_type == 'tag' && startsWith(github.ref_name, 'v') && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    needs: [ checks, build, ci ]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    env:
+      RELEASE_VERSION: ${{ needs.checks.outputs.version }}
+    steps:
+      - name: Check out release source
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          package-manager-cache: false
+
+      - name: Download distribution packages
+        uses: actions/download-artifact@v8
+        with:
+          pattern: Trace-*
+          path: release-assets
+          merge-multiple: true
+
+      - name: Validate packages and generate SHA-256 checksums
+        run: node .github/scripts/prepare-release.mjs
+
+      - name: Upload all assets and publish release
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const { publishRelease } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/publish-release.mjs`);
+            await publishRelease({ github, context, core, version: process.env.RELEASE_VERSION });
