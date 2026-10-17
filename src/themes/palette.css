@@ -1,0 +1,498 @@
+/* Shared component palette for folder-based CSS themes. */
+:root[data-theme='custom'] {
+  --ink: var(--theme-text);
+  --muted: var(--theme-muted);
+  --green: var(--theme-accent);
+  --line: var(--theme-line);
+  --white: var(--theme-panel);
+  --soft: var(--theme-bg);
+  color: var(--theme-text);
+  background: var(--theme-bg);
+
+  ::selection {
+    background: var(--theme-active);
+    color: var(--theme-text);
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: var(--theme-line);
+  }
+
+  .app-shell,
+  .main,
+  .loading-screen,
+  .library-page,
+  .settings-page {
+    background-color: var(--theme-bg);
+    color: var(--theme-text);
+  }
+
+  .sidebar,
+  .inspector,
+  .statusbar,
+  .character-card,
+  .type-card,
+  .settings-card,
+  .dropdown,
+  .toast {
+    background-color: var(--theme-panel);
+    border-color: var(--theme-line);
+    color: var(--theme-text);
+  }
+
+  .rail,
+  .topbar {
+    color: var(--theme-chrome-text);
+    background-color: var(--theme-chrome);
+    background-image: var(--theme-chrome-pattern);
+    background-size: 360px auto;
+    background-position: center;
+    border-color: var(--theme-chrome-line);
+    box-shadow: inset 0 -1px 0 #e6dac91c,
+    0 3px 8px #1e1e2526;
+  }
+
+  .rail {
+    background-color: var(--theme-rail);
+    background-size: 280px auto;
+    background-position: center top;
+    box-shadow: inset -1px 0 0 #e6dac91c;
+  }
+
+  .rail-button,
+  .version {
+    color: var(--theme-chrome-muted);
+  }
+
+  .rail-button:hover {
+    background: var(--theme-chrome-hover);
+    color: var(--theme-chrome-text);
+  }
+
+  .rail-button.active {
+    background: linear-gradient(#ffffff0b, #1e1e250b), var(--theme-accent);
+    color: var(--theme-accent-ink);
+    box-shadow: inset 0 1px 0 #fff4e53b,
+    2px 2px 0 var(--theme-rail),
+    3px 3px 0 var(--theme-accent);
+  }
+
+  .rail-button.active::before {
+    background: var(--theme-accent);
+  }
+
+  .wordmark,
+  .wordmark > span {
+    color: var(--theme-text);
+  }
+
+  .topbar .page-heading h1 {
+    color: var(--theme-chrome-text);
+  }
+
+  .topbar .breadcrumb,
+  .topbar .breadcrumb span,
+  .topbar .page-heading > p,
+  .topbar .header-actions > .icon-button,
+  .topbar .dropdown-wrap > .icon-button {
+    color: var(--theme-chrome-muted);
+  }
+
+  .topbar .header-actions > .icon-button:hover,
+  .topbar .dropdown-wrap > .icon-button:hover {
+    background: var(--theme-chrome-hover);
+  }
+
+  /* Original text sizes and spacing are retained throughout. */
+
+  h1,
+  h2,
+  h3,
+  .settings-card h2,
+  .modal-heading h2,
+  .club-list-item strong,
+  .member-main strong,
+  .connection-row strong,
+  .picker-row strong,
+  .page-callout strong,
+  .folder-group-heading h2,
+  .canvas-empty h2,
+  .page-empty h2,
+  .character-detail h2,
+  .search-input > input,
+  .loading-screen h1,
+  .stats-row strong {
+    color: var(--theme-text);
+  }
+
+  .brand-caption,
+  .section-heading,
+  .sidebar-hint,
+  .legend-name,
+  .local-badge,
+  .local-badge strong,
+  .local-badge small,
+  .save-status,
+  .club-list-item,
+  .club-list-item small,
+  .canvas-meta,
+  .canvas-bottom > p,
+  .zoom-controls > span,
+  .zoom-controls > .icon-button,
+  .eyebrow,
+  .canvas-empty > p,
+  .onboarding-steps,
+  .onboarding-steps b,
+  .inspector-caption,
+  .inspector-title,
+  .inspector-tabs > button,
+  .member-main small:not([style]),
+  .detail-notes,
+  .inspector-tip,
+  .inspector-tip p,
+  .inspector-tip span,
+  .empty-hint,
+  .connection-row small,
+  .connection-row > svg,
+  .edge-detail h2 > span,
+  .character-card > p,
+  .card-bottom > span,
+  .card-bottom .text-button,
+  .type-card p,
+  .page-empty p,
+  .page-callout,
+  .page-callout p,
+  .settings-card p,
+  .settings-card-heading,
+  .stats-row span,
+  .data-path,
+  .data-path code,
+  .help-steps b,
+  .dropdown button,
+  .dropdown button small,
+  .modal-heading p,
+  .field-label,
+  .field-hint,
+  .checkbox-row,
+  .checkbox-row small,
+  .portrait-editor .text-button,
+  .confirm-text,
+  .pair-fields > svg,
+  .inline-callout p,
+  .relation-preview,
+  .picker-row small,
+  .loading-screen > p,
+  .folder-navigation,
+  .folder-toggle,
+  .folder-toggle-spacer,
+  .folder-breadcrumbs,
+  .folder-help,
+  .folder-group-heading,
+  .picker-group > h3,
+  .picker-group > h3 > span,
+  .meta-divider {
+    color: var(--theme-muted);
+  }
+
+  .icon-button,
+  .text-button {
+    color: var(--theme-accent);
+  }
+
+  .text-button:hover,
+  .folder-toggle:hover,
+  .folder-breadcrumbs button:hover,
+  .folder-breadcrumbs [aria-current] {
+    color: var(--theme-text);
+  }
+
+  .button,
+  .icon-button,
+  .rail-button {
+    border-radius: 4px;
+  }
+
+  .button.primary {
+    color: var(--theme-accent-ink);
+    background: linear-gradient(#ffffff0b, #1e1e250b), var(--theme-accent);
+    box-shadow: inset 0 1px 0 #fff4e53b,
+    inset 0 0 0 1px color-mix(in srgb, var(--theme-accent) 75%, #1e1e25),
+    2px 2px 0 var(--theme-panel),
+    3px 3px 0 var(--theme-accent);
+  }
+
+  .button.primary:hover:not(:disabled) {
+    background-color: color-mix(in srgb, var(--theme-accent) 85%, var(--theme-text));
+  }
+
+  .button.secondary,
+  .new-club,
+  .button.dashed,
+  .canvas-tool,
+  .label-toggle,
+  .zoom-controls {
+    color: var(--theme-text);
+    background: linear-gradient(var(--theme-highlight), transparent), var(--theme-panel);
+    border-color: var(--theme-edge);
+    box-shadow: inset 0 1px 0 var(--theme-highlight),
+    2px 2px 0 var(--theme-edge);
+  }
+
+  .button.secondary:hover:not(:disabled),
+  .new-club:hover,
+  .button.dashed:hover,
+  .canvas-tool:hover,
+  .icon-button:hover:not(:disabled),
+  .dropdown button:hover,
+  .club-list-item:hover,
+  .folder-navigation:hover,
+  .picker-row:hover,
+  .connection-row:hover {
+    color: var(--theme-text);
+    background-color: var(--theme-hover);
+    border-color: var(--theme-line);
+  }
+
+  .club-list-item.active,
+  .canvas-tool.active,
+  .label-toggle.active,
+  .folder-navigation.active,
+  .folder-row.active,
+  .picker-row.selected,
+  .portrait-crop-tools [aria-pressed='true'] {
+    color: var(--theme-text);
+    background: var(--theme-active);
+    border-color: var(--theme-accent);
+  }
+
+  .button:active:not(:disabled) {
+    box-shadow: inset 0 1px 3px #1e1e2533,
+    1px 1px 0 var(--theme-edge);
+  }
+
+  .inspector-tabs > button.active {
+    color: var(--theme-accent);
+  }
+
+  .inspector-tabs > button.active::after {
+    background: var(--theme-accent);
+  }
+
+  .count,
+  .pill,
+  .inspector-tabs > button.active .count,
+  .help-steps b,
+  .page-empty-icon {
+    color: var(--theme-text);
+    background: var(--theme-panel-alt);
+    border-color: var(--theme-line);
+  }
+
+  .avatar {
+    color: #1e1e25;
+  }
+
+  .status-dot,
+  .canvas-meta > .status-dot {
+    background: var(--theme-accent);
+  }
+
+  .field input:not([type='checkbox']),
+  .field textarea,
+  .field select,
+  .search-input {
+    color: var(--theme-text);
+    background-color: var(--theme-input);
+    border-color: var(--theme-line);
+    border-radius: 4px;
+    box-shadow: inset 0 1px 2px #1e1e2512;
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--theme-faint);
+  }
+
+  button:focus-visible,
+  a:focus-visible,
+  input:focus,
+  select:focus,
+  textarea:focus,
+  .upload-button:focus-within,
+  .portrait-crop-viewport:focus-within {
+    outline-color: var(--theme-accent);
+  }
+
+  .topbar button:focus-visible,
+  .rail button:focus-visible {
+    outline-color: var(--theme-chrome-text);
+  }
+
+  .data-path,
+  .inline-callout,
+  .page-callout,
+  .inspector-tip,
+  .relation-preview,
+  .portrait-crop-viewport {
+    background-color: var(--theme-panel-alt);
+    border-color: var(--theme-line);
+  }
+
+  .card-bottom,
+  .connection-row,
+  .stats-row,
+  .modal-footer,
+  .folder-panel,
+  .folder-list,
+  .folder-group-heading,
+  .picker-group > h3 {
+    border-color: var(--theme-line);
+  }
+
+  .zoom-controls > i,
+  .onboarding-steps i {
+    background: var(--theme-line);
+  }
+
+  .dropdown,
+  .toast {
+    box-shadow: var(--theme-shadow);
+  }
+
+  .modal {
+    color: var(--theme-text);
+    background-color: var(--theme-panel);
+    background-image: var(--theme-pattern);
+    background-size: 1050px auto;
+    background-position: -100px -18px;
+    border-color: var(--theme-edge);
+    border-radius: 7px;
+    box-shadow: var(--theme-shadow),
+    inset 0 0 0 3px var(--theme-panel),
+    inset 0 0 0 4px var(--theme-line);
+  }
+
+  .modal-backdrop {
+    background: #080f12b3;
+  }
+
+  .form-error,
+  .save-alert {
+    color: var(--theme-text);
+    background: color-mix(in srgb, var(--theme-accent) 15%, var(--theme-panel));
+    border-color: var(--theme-accent);
+  }
+
+  .danger-text {
+    color: var(--theme-accent) !important;
+  }
+
+  .button.danger {
+    background: var(--theme-accent);
+    color: var(--theme-accent-ink);
+  }
+
+  .button.danger:hover {
+    background: color-mix(in srgb, var(--theme-accent) 85%, var(--theme-text));
+  }
+
+  .save-status.error,
+  .loading-screen > .form-error {
+    color: var(--theme-accent);
+  }
+
+  .canvas {
+    background-color: var(--theme-canvas);
+  }
+
+  .canvas-empty {
+    background: var(--theme-bg);
+  }
+
+  .empty-orbit {
+    color: var(--theme-accent);
+  }
+
+  /* Scope SVG paint to the visible canvas. Exported diagrams keep their original artwork. */
+
+  .canvas .diagram > rect:first-of-type {
+    fill: transparent;
+  }
+
+  .canvas .diagram #paper-dots circle {
+    fill: var(--theme-line);
+  }
+
+  .canvas .diagram-node > circle:first-of-type,
+  .canvas .diagram-edge rect {
+    fill: var(--theme-canvas);
+  }
+
+  .canvas .diagram-node > text:last-child {
+    fill: var(--theme-text);
+  }
+
+  .canvas .diagram > circle {
+    stroke: var(--theme-line);
+  }
+
+  .canvas .diagram-node > circle[stroke-width='1.8'] {
+    stroke: var(--theme-accent);
+  }
+
+  .canvas .diagram-node:hover > circle:first-of-type,
+  .canvas .diagram-node:focus-visible > circle:first-of-type {
+    stroke: var(--theme-accent);
+  }
+}
+
+/* Investigation-specific components share the same palette as the Clubs shell. */
+:root[data-theme='custom'][data-theme-id] {
+  .library-role-toolbar {
+    color: var(--theme-text);
+    background: var(--theme-panel);
+  }
+
+  .role-filter {
+    background: var(--theme-bg);
+    border-color: var(--theme-line);
+  }
+
+  .role-filter button,
+  .node-answers p {
+    color: var(--theme-muted);
+  }
+
+  .role-filter button.active,
+  .culprit-avatar {
+    color: var(--theme-accent-ink);
+    background: var(--theme-accent);
+  }
+
+  .question-heading,
+  .node-answers h3 {
+    color: var(--theme-accent);
+  }
+
+  .node-lock.active {
+    color: var(--theme-text);
+    border-color: var(--theme-accent);
+    background: var(--theme-active);
+  }
+
+  .canvas .diagram-node > text {
+    fill: var(--theme-text);
+  }
+
+  .canvas .culprit-node > circle:nth-of-type(2) {
+    fill: var(--theme-accent);
+  }
+
+  .canvas .culprit-node > path {
+    stroke: var(--theme-accent-ink);
+  }
+
+  .canvas .culprit-node > text:first-of-type {
+    fill: var(--theme-accent-ink);
+  }
+}

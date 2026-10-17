@@ -1,0 +1,7 @@
+{
+  "format": "clubs/theme",
+  "api_version": 1,
+  "name": "Clubs",
+  "mode": "light",
+  "stylesheet": "style.css"
+}

@@ -3,6 +3,8 @@ import type { DesktopAPI } from '../shared/model';
 import type { UpdateState } from '../shared/updates';
 
 const api: DesktopAPI = {
+  getThemes: () => ipcRenderer.invoke('themes:list'),
+  showThemesFolder: () => ipcRenderer.invoke('themes:folder'),
   getUpdateState: () => ipcRenderer.invoke('updates:state'),
   checkForUpdates: () => ipcRenderer.invoke('updates:check'),
   setUpdateInterval: (days) => ipcRenderer.invoke('updates:interval', days),

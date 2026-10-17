@@ -14,17 +14,24 @@ import {
 } from 'electron';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { writeFile } from 'node:fs/promises';
+import { mkdir, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { databaseSchema, type ExportFormat } from '../shared/model';
 import { describeImport, mergeTransfer, transferSchema } from '../shared/transfer';
 import { Repository } from './repository';
 import { type DataDirectory, prepareDataDirectory } from './data-directory';
-import { readLanguage, readUpdatePreferences, saveLanguage, saveUpdateCheck, saveUpdateInterval } from './preferences';
+import {
+  readLanguage,
+  readUpdatePreferences,
+  saveLanguage,
+  saveUpdateCheck,
+  saveUpdateInterval,
+} from './preferences';
 import { autoUpdater } from 'electron-updater';
 import { isUpdateInterval, supportsAutoUpdate } from '../shared/updates';
 import { UpdateController } from './updates';
 import { UpdateSchedule } from './update-schedule';
+import { installBundledTheme, readThemeResource, scanThemes, themesDirectory } from './themes';
 
 app.setName(tr('app.name'));
 let dataDirectory: DataDirectory = { directory: path.join(app.getPath('appData'), 'Trace') };
@@ -40,7 +47,10 @@ if (!directoryError) {
   app.setName(tr('app.name'));
 }
 protocol.registerSchemesAsPrivileged([
-  { scheme: 'trace', privileges: { standard: true, secure: true, supportFetchAPI: true } },
+  {
+    scheme: 'trace',
+    privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true },
+  },
 ]);
 let mainWindow: BrowserWindow | null = null;
 let repository: Repository;
@@ -56,6 +66,14 @@ const autoUpdatesSupported = supportsAutoUpdate(
 );
 
 const developmentUrl = !app.isPackaged ? process.env.TRACE_DEV_URL : undefined;
+const themesRoot = themesDirectory({
+  packaged: app.isPackaged,
+  appPath: app.getAppPath(),
+  executable: app.getPath('exe'),
+  platform: process.platform,
+  env: process.env,
+});
+let themeSetupWarning = '';
 
 function authorize(event: IpcMainInvokeEvent) {
   const url = event.senderFrame?.url;
@@ -72,6 +90,18 @@ function authorize(event: IpcMainInvokeEvent) {
 }
 
 function registerHandlers() {
+  ipcMain.handle('themes:list', async (event) => {
+    authorize(event);
+    const catalog = await scanThemes(themesRoot);
+    if (themeSetupWarning) catalog.warnings.unshift(themeSetupWarning);
+    return catalog;
+  });
+  ipcMain.handle('themes:folder', async (event) => {
+    authorize(event);
+    await mkdir(themesRoot, { recursive: true });
+    const error = await shell.openPath(themesRoot);
+    if (error) throw new Error(error);
+  });
   ipcMain.handle('updates:state', (event) => {
     authorize(event);
     return updates.state;
@@ -292,6 +322,19 @@ else {
     .whenReady()
     .then(async () => {
       repository = new Repository(app.getPath('userData'));
+      for (const id of ['clubs']) {
+        try {
+          await installBundledTheme(
+            themesRoot,
+            path.join(app.getAppPath(), 'resources/themes', id),
+          );
+        } catch (error) {
+          themeSetupWarning = [themeSetupWarning, `${id}: ${(error as Error).message}`]
+            .filter(Boolean)
+            .join('\n');
+        }
+      }
+
       updates = new UpdateController(
         autoUpdatesSupported ? autoUpdater : undefined,
         app.getVersion(),
@@ -301,12 +344,33 @@ else {
       );
 
       const root = path.join(app.getAppPath(), 'dist');
-      protocol.handle('trace', (request) => {
-        const url = new URL(request.url);
-        const file = path.resolve(root, '.' + decodeURIComponent(url.pathname));
-        if (url.hostname !== 'app' || !file.startsWith(root + path.sep))
-          return new Response('Forbidden', { status: 403 });
-        return net.fetch(pathToFileURL(file).toString());
+      protocol.handle('trace', async (request) => {
+        try {
+          const url = new URL(request.url);
+          if (url.hostname === 'themes') {
+            const [version, id, ...parts] = url.pathname
+              .slice(1)
+              .split('/')
+              .map(decodeURIComponent);
+            if (!/^v[\d-]+$/.test(version)) return new Response('Forbidden', { status: 403 });
+            const { bytes, mime } = await readThemeResource(themesRoot, id, parts.join('/'));
+            return new Response(new Uint8Array(bytes), {
+              headers: {
+                'Content-Type': mime,
+                'Cache-Control': 'no-store',
+                'Access-Control-Allow-Origin': '*',
+                'Cross-Origin-Resource-Policy': 'cross-origin',
+                'X-Content-Type-Options': 'nosniff',
+              },
+            });
+          }
+          const file = path.resolve(root, '.' + decodeURIComponent(url.pathname));
+          if (url.hostname !== 'app' || !file.startsWith(root + path.sep))
+            return new Response('Forbidden', { status: 403 });
+          return net.fetch(pathToFileURL(file).toString());
+        } catch {
+          return new Response('Theme resource unavailable', { status: 404 });
+        }
       });
       session.defaultSession.setPermissionRequestHandler((_contents, _permission, callback) =>
         callback(false),

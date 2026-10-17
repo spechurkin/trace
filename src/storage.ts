@@ -93,6 +93,9 @@ async function chooseJSON(): Promise<unknown | null> {
 }
 
 const browserAPI: DesktopAPI = {
+  getThemes: async () => ({ directory: '', themes: [], warnings: [] }),
+  showThemesFolder: async () => {
+  },
   getUpdateState: async () => ({ status: 'disabled', currentVersion: '', intervalDays: 1 }),
   checkForUpdates: async () => ({ status: 'disabled', currentVersion: '', intervalDays: 1 }),
   setUpdateInterval: async () => {

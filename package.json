@@ -18,6 +18,7 @@
     "test": "vitest run",
     "test:desktop": "npm run build && playwright test",
     "test:packaged": "node scripts/test-packaged.mjs",
+    "test:themes": "npm run build && playwright test tests/desktop/themes.spec.ts",
     "test:stress": "vitest run tests/stress.test.ts",
     "test:audit:desktop": "npm run build && playwright test --config playwright.audit.config.ts",
     "test:audit:browser": "npm run build && playwright test --config playwright.browser.config.ts",
@@ -60,6 +61,7 @@
       "dist/**/*",
       "dist-electron/**/*",
       "resources/icon.png",
+      "resources/themes/**/*",
       "package.json"
     ],
     "asar": true,
@@ -85,7 +87,8 @@
       "installerLanguages": [
         "en_US",
         "ru_RU"
-      ]
+      ],
+      "include": "resources/themes.nsh"
     },
     "portable": {
       "artifactName": "Trace-${version}-windows-portable.${ext}"
