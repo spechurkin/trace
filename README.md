@@ -90,6 +90,11 @@ about a former policeman, a missing folder and an old secret. This game master's
 Trace works offline, requires no account and keeps your investigations and images on your device. Changes save
 automatically, so you can stay with the story. Back up your library whenever you want.
 
+Installed Windows builds and Linux AppImages check for stable updates daily and download them in the background while
+Trace is running. In Settings, choose a day, a week or a month (30 days), or check manually. The schedule survives
+restarts. When an update is ready, save and restart to install it. Portable Windows, macOS and DEB editions link to
+GitHub for manual updates.
+
 The interface is available in **English and Russian**, with instant switching in Settings. Your names, notes and answers
 stay as you wrote them.
 

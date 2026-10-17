@@ -1,10 +1,4 @@
-import {
-  _electron as electron,
-  type ElectronApplication,
-  expect,
-  type Page,
-  test,
-} from '@playwright/test';
+import { _electron as electron, type ElectronApplication, expect, type Page, test } from '@playwright/test';
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { performance } from 'node:perf_hooks';
@@ -94,7 +88,7 @@ test('minimum supported window: all main actions and modal footer stay visible i
     setLocale(locale);
     await page
       .locator('.rail')
-      .getByRole('button', { name: tr('navigation.clubs'), exact: true })
+      .getByRole('button', { name: tr('navigation.boards'), exact: true })
       .click();
     await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(1080, 720));
     const clipped = await page
@@ -174,7 +168,7 @@ test('500-node board remains savable when attempting to add node 501', async () 
   await dialog.getByLabel(tr('characters.nameLabel')).fill('Over board capacity');
   await dialog.locator('button[type=submit]').click();
   await expect(page.locator('.save-status')).toHaveText(tr('save.saved'), { timeout: 3000 });
-  expect((await saved()).clubs[0].characterIds.length).toBeLessThanOrEqual(500);
+  expect((await saved()).boards[0].characterIds.length).toBeLessThanOrEqual(500);
 });
 
 test('5000-node library refuses node 5001 without entering unsavable state', async () => {
@@ -198,13 +192,13 @@ test('5000-node library refuses node 5001 without entering unsavable state', asy
 
 test('100-board library refuses duplicate 101 without entering unsavable state', async () => {
   await launch(stressDatabase(1, 100));
-  await expect(page.locator('.new-club')).toBeDisabled();
-  await page.getByRole('button', { name: tr('clubs.actionsLabel'), exact: true }).click();
+  await expect(page.locator('.new-board')).toBeDisabled();
+  await page.getByRole('button', { name: tr('boards.actionsLabel'), exact: true }).click();
   await expect(
     page.getByRole('button', { name: tr('actions.duplicate'), exact: true }),
   ).toBeDisabled();
   await expect(page.locator('.save-status')).toHaveText(tr('save.saved'), { timeout: 3000 });
-  expect((await saved()).clubs).toHaveLength(100);
+  expect((await saved()).boards).toHaveLength(100);
 });
 
 test('linking two nodes cannot create a cycle and removal reconnects children', async () => {
@@ -228,7 +222,7 @@ test('linking two nodes cannot create a cycle and removal reconnects children', 
     .getByRole('button', { name: tr('actions.delete'), exact: true })
     .click();
   const persisted = await saved();
-  expect(persisted.clubs[0].layout!.n1.parentId).toBe('__culprit__');
+  expect(persisted.boards[0].layout!.n1.parentId).toBe('__culprit__');
   expect(persisted.characters).toHaveLength(3);
   await expect(page.locator('.diagram-node')).toHaveCount(3);
 });
@@ -261,7 +255,7 @@ test('write failure shows error and explicit retry restores persistence', async 
   await expect(page.locator('.save-status')).toHaveText(tr('save.error'));
   await expect(page.locator('.save-alert')).toBeVisible();
   expect(
-    JSON.parse(await readFile(path.join(directory, 'library.json'), 'utf8')).clubs[0].layout.n0
+    JSON.parse(await readFile(path.join(directory, 'library.json'), 'utf8')).boards[0].layout.n0
       .locked,
   ).toBeUndefined();
   const temp = path.resolve(directory, 'library.json.tmp');
@@ -269,7 +263,7 @@ test('write failure shows error and explicit retry restores persistence', async 
     throw new Error('Unsafe test cleanup');
   await rm(temp, { recursive: true });
   await page.getByRole('button', { name: tr('actions.retrySave'), exact: true }).click();
-  expect((await saved()).clubs[0].layout!.n0.locked).toBe(true);
+  expect((await saved()).boards[0].layout!.n0.locked).toBe(true);
 });
 
 test('malicious node text remains inert in renderer and SVG export', async () => {
@@ -319,7 +313,7 @@ test('rapid 51 lock toggles save the final revision', async () => {
   await page.locator('[data-node-id=n0]').press('Enter');
   const start = performance.now();
   for (let i = 0; i < 51; i++) await page.locator('.node-lock').click();
-  expect((await saved()).clubs[0].layout!.n0.locked).toBe(true);
+  expect((await saved()).boards[0].layout!.n0.locked).toBe(true);
   await record('lock51SaveMs', +(performance.now() - start).toFixed(1));
 });
 
@@ -337,7 +331,7 @@ test('closing immediately after a burst preserves the final revision', async () 
   const persisted = databaseSchema.parse(
     JSON.parse(await readFile(path.join(directory, 'library.json'), 'utf8')),
   );
-  expect(persisted.clubs[0].layout!.n0.locked).toBe(true);
+  expect(persisted.boards[0].layout!.n0.locked).toBe(true);
 });
 
 test('maximum board renders and exports 500 branches; selection stays interactive', async () => {
@@ -446,7 +440,7 @@ test('invalid backup import shows error and preserves the existing library', asy
 
 test('500-node automatic layout remains readable at maximum zoom', async () => {
   const data = stressDatabase(500);
-  delete data.clubs[0].layout;
+  delete data.boards[0].layout;
   await launch(data);
   await page.locator('.diagram-viewport').dispatchEvent('wheel', { deltaY: -10000, ctrlKey: true });
   await expect(page.locator('.zoom-controls > span')).toHaveText('250%');
@@ -478,7 +472,7 @@ test('5000 nodes and 500 deep boards remain interactive together', async () => {
   await record('maximumCombinedSelectionMs', selectionMs);
   expect(selectionMs, 'A node selection should finish within one second').toBeLessThan(1000);
   await page.locator('.node-lock').click();
-  expect((await saved()).clubs[0].layout!.n0.locked).toBe(true);
+  expect((await saved()).boards[0].layout!.n0.locked).toBe(true);
 });
 
 test('invalid portrait bytes show validation and cancel preserves the library', async () => {
@@ -531,12 +525,12 @@ test('closing while slow saves are queued retains the final board selection', as
       (document.querySelector('.node-lock') as HTMLButtonElement).click();
       await new Promise((resolve) => setTimeout(resolve, 0));
     }
-    (document.querySelectorAll('.club-list-item')[1] as HTMLButtonElement).click();
+    (document.querySelectorAll('.board-list-item')[1] as HTMLButtonElement).click();
   });
   await page.close();
   await app.close();
   const persisted = databaseSchema.parse(
     JSON.parse(await readFile(path.join(directory, 'library.json'), 'utf8')),
   );
-  expect(persisted.activeClubId).toBe('b1');
+  expect(persisted.activeBoardId).toBe('b1');
 });

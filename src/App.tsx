@@ -7,8 +7,8 @@ import {
   Check,
   ChevronDown,
   ChevronRight,
-  Circle as ClubIcon,
-  CircleDot as ClubDot,
+  Circle as BoardIcon,
+  CircleDot as BoardDot,
   Copy,
   Download,
   Eye,
@@ -36,14 +36,14 @@ import {
   ZoomOut,
 } from 'lucide-react';
 import {
+  type Board,
   BOARD_CREATION_LIMIT,
   type Character,
   type CharacterFolder,
-  type Club,
   deleteCharacter,
   deleteCharacterFolder,
-  removeFromClub,
-  upsertClub,
+  removeFromBoard,
+  upsertBoard,
 } from '../shared/model';
 import {
   createCharactersTransfer,
@@ -53,25 +53,20 @@ import {
 } from '../shared/transfer';
 import { folderKindOf, folderPath, folderSubtree } from '../shared/folders';
 import { Modal } from './components';
-import { CharacterForm, ClubForm, FolderForm, ParticipantsForm } from './forms';
+import { BoardForm, CharacterForm, FolderForm, ParticipantsForm } from './forms';
 import CharacterLibrary from './CharacterLibrary';
 import Diagram from './Diagram';
 import { demoDatabase } from './demo';
 import { storage } from './storage';
 import { useLibrary } from './useLibrary';
-import {
-  boardEdges,
-  investigationTypes,
-  kindOf,
-  type NodeKind,
-  retainMembers,
-} from '../shared/investigation';
+import { UpdateSettings, useUpdates } from './Updates';
+import { boardEdges, investigationTypes, kindOf, type NodeKind, retainMembers } from '../shared/investigation';
 import { BranchForm } from './InvestigationForms';
 import { BoardInspector } from './BoardInspector';
 
-type View = 'clubs' | 'characters' | 'evidence' | 'locations' | 'events' | 'settings';
+type View = 'boards' | 'characters' | 'evidence' | 'locations' | 'events' | 'settings';
 type Editor = {
-  kind: 'character' | 'folder' | 'club' | 'participants' | 'connection';
+  kind: 'character' | 'folder' | 'board' | 'participants' | 'connection';
   id?: string;
   nodeKind?: NodeKind;
   sourceId?: string;
@@ -109,8 +104,9 @@ export default function App() {
     document.title = tr('app.name');
   }, [locale]);
   const library = useLibrary();
+  const updateState = useUpdates();
   const { data, commit } = library;
-  const [view, setView] = useState<View>('clubs');
+  const [view, setView] = useState<View>('boards');
   const activeKind: NodeKind =
     view === 'evidence'
       ? 'evidence'
@@ -166,10 +162,10 @@ export default function App() {
   }, []);
   const [linking, setLinking] = useState(false);
   const [exportMenu, setExportMenu] = useState(false);
-  const [clubMenu, setClubMenu] = useState(false);
+  const [boardMenu, setBoardMenu] = useState(false);
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState('');
-  const club = data?.clubs.find((c) => c.id === data.activeClubId) || data?.clubs[0];
+  const board = data?.boards.find((c) => c.id === data.activeBoardId) || data?.boards[0];
   const closeEditor = useCallback(() => setEditor(null), []);
   const clearSelection = () => {
     setSelectedCharacter(undefined);
@@ -183,8 +179,8 @@ export default function App() {
     setZoom(1);
     setPan({ x: 0, y: 0 });
     setLinking(false);
-    setClubMenu(false);
-  }, [club?.id]);
+    setBoardMenu(false);
+  }, [board?.id]);
   useEffect(() => {
     if (
       data &&
@@ -209,7 +205,7 @@ export default function App() {
         clearSelection();
         setLinking(false);
         setExportMenu(false);
-        setClubMenu(false);
+        setBoardMenu(false);
       }
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') {
         event.preventDefault();
@@ -223,18 +219,18 @@ export default function App() {
     return () => window.removeEventListener('keydown', key);
   }, [library.flush]);
 
-  const updateClub = (update: (club: Club) => Club) => {
-    if (club)
+  const updateBoard = (update: (board: Board) => Board) => {
+    if (board)
       commit((data) => ({
         ...data,
-        clubs: data.clubs.map((c) => (c.id === club.id ? update(c) : c)),
+        boards: data.boards.map((c) => (c.id === board.id ? update(c) : c)),
       }));
   };
   const changeView = (next: View) => {
     setView(next);
     setSearch('');
     setExportMenu(false);
-    setClubMenu(false);
+    setBoardMenu(false);
   };
   const libraryView = ['characters', 'evidence', 'locations', 'events'].includes(view);
   const [roleFilter, setRoleFilter] = useState<'all' | 'witness' | 'suspect'>('all');
@@ -245,7 +241,7 @@ export default function App() {
       parentId: activeFolder && activeFolder !== ':unfiled' ? activeFolder : null,
     });
   const newConnection = () => {
-    if (!club || club.characterIds.length < 1) {
+    if (!board || board.characterIds.length < 1) {
       setEditor({ kind: 'participants' });
       return;
     }
@@ -257,14 +253,14 @@ export default function App() {
       characters: data.characters.some((c) => c.id === character.id)
         ? data.characters.map((c) => (c.id === character.id ? character : c))
         : [...data.characters, character],
-      clubs:
-        add && club
-          ? data.clubs.map((c) =>
-              c.id === club.id && !c.characterIds.includes(character.id)
+      boards:
+        add && board
+          ? data.boards.map((c) =>
+              c.id === board.id && !c.characterIds.includes(character.id)
                 ? { ...c, characterIds: [...c.characterIds, character.id] }
                 : c,
             )
-          : data.clubs,
+          : data.boards,
     }));
     closeEditor();
     notify(tr('notifications.characterSaved'));
@@ -302,16 +298,16 @@ export default function App() {
       },
     });
   };
-  const saveClub = (next: Club) => {
+  const saveBoard = (next: Board) => {
     try {
-      commit((data) => upsertClub(data, next));
+      commit((data) => upsertBoard(data, next));
     } catch (error) {
       notify(
         error instanceof Error ? error.message : tr('validation.boardLimit', BOARD_CREATION_LIMIT),
       );
       return;
     }
-    setView('clubs');
+    setView('boards');
     closeEditor();
   };
   const askDeleteCharacter = (character: Character) =>
@@ -368,12 +364,12 @@ export default function App() {
     }
   };
   const makeExport = async (format: 'png' | 'svg') => {
-    if (!data || !club) return;
+    if (!data || !board) return;
     setExportMenu(false);
     setBusy(true);
     try {
       const { exportDiagram } = await import('./export');
-      if (await exportDiagram(data, club, format, labels))
+      if (await exportDiagram(data, board, format, labels))
         notify(tr('notifications.diagramSaved', format.toUpperCase()));
     } catch (error) {
       notify(error instanceof Error ? error.message : tr('errors.diagramExport'));
@@ -416,10 +412,10 @@ export default function App() {
     );
 
   const relationTypes = investigationTypes();
-  const connections = club ? boardEdges(club, data.characters) : [];
+  const connections = board ? boardEdges(board, data.characters) : [];
   const title =
-    view === 'clubs'
-      ? club?.name || tr('clubs.emptyTitle')
+    view === 'boards'
+      ? board?.name || tr('boards.emptyTitle')
       : view === 'characters'
         ? tr('characters.libraryTitle')
         : libraryView
@@ -432,8 +428,8 @@ export default function App() {
             )
           : tr('settings.title');
   const subtitle =
-    view === 'clubs'
-      ? club?.description || tr('clubs.subtitle')
+    view === 'boards'
+      ? board?.description || tr('boards.subtitle')
       : view === 'characters'
         ? tr('characters.subtitle')
         : libraryView
@@ -452,14 +448,14 @@ export default function App() {
         <button
           className="brand-mark"
           aria-label={tr('app.name')}
-          onClick={() => changeView('clubs')}
+          onClick={() => changeView('boards')}
         >
           <OrbitMark size={36} />
         </button>
         <div className="rail-links">
           {(
             [
-              ['clubs', ClubDot, tr('navigation.clubs')],
+              ['boards', BoardDot, tr('navigation.boards')],
               ['characters', Users, tr('navigation.characters')],
               ['evidence', Fingerprint, tr('trace.evidenceTab')],
               ['locations', MapPin, tr('trace.locations')],
@@ -501,36 +497,36 @@ export default function App() {
           <span className="brand-caption">{tr('app.tagline')}</span>
         </div>
         <div className="section-heading">
-          <span>{tr('clubs.sidebarHeading')}</span>
-          <Count>{data.clubs.length}</Count>
+          <span>{tr('boards.sidebarHeading')}</span>
+          <Count>{data.boards.length}</Count>
         </div>
         <button
-          className="button new-club"
-          disabled={data.clubs.length >= BOARD_CREATION_LIMIT}
+          className="button new-board"
+          disabled={data.boards.length >= BOARD_CREATION_LIMIT}
           title={
-            data.clubs.length >= BOARD_CREATION_LIMIT
+            data.boards.length >= BOARD_CREATION_LIMIT
               ? tr('validation.boardLimit', BOARD_CREATION_LIMIT)
               : undefined
           }
-          onClick={() => setEditor({ kind: 'club' })}
+          onClick={() => setEditor({ kind: 'board' })}
         >
           <Plus size={17} />
-          {tr('clubs.new')}
+          {tr('boards.new')}
         </button>
-        {data.clubs.length >= BOARD_CREATION_LIMIT && (
+        {data.boards.length >= BOARD_CREATION_LIMIT && (
           <p className="sidebar-hint">{tr('validation.boardLimit', BOARD_CREATION_LIMIT)}</p>
         )}
-        <div className="club-list">
-          {data.clubs.map((c) => (
+        <div className="board-list">
+          {data.boards.map((c) => (
             <button
-              className={`club-list-item ${c.id === club?.id && view === 'clubs' ? 'active' : ''}`}
+              className={`board-list-item ${c.id === board?.id && view === 'boards' ? 'active' : ''}`}
               key={c.id}
               onClick={() => {
-                commit((data) => ({ ...data, activeClubId: c.id }));
-                changeView('clubs');
+                commit((data) => ({ ...data, activeBoardId: c.id }));
+                changeView('boards');
               }}
             >
-              <ClubIcon size={17} />
+              <BoardIcon size={17} />
               <span>
                 <strong>{c.name}</strong>
                 <small>
@@ -540,10 +536,10 @@ export default function App() {
                   {tr('counts.connectionsSuffix')}
                 </small>
               </span>
-              {c.id === club?.id && view === 'clubs' && <ChevronRight size={15} />}
+              {c.id === board?.id && view === 'boards' && <ChevronRight size={15} />}
             </button>
           ))}
-          {!data.clubs.length && <p className="sidebar-hint">{tr('clubs.sidebarHint')}</p>}
+          {!data.boards.length && <p className="sidebar-hint">{tr('boards.sidebarHint')}</p>}
         </div>
         <div className="sidebar-relations">
           <div className="section-heading">
@@ -596,8 +592,8 @@ export default function App() {
             <div className="breadcrumb">
               {tr('navigation.workspaceHeading')}
               <span>/</span>
-              {view === 'clubs'
-                ? tr('navigation.clubsHeading')
+              {view === 'boards'
+                ? tr('navigation.boardsHeading')
                 : view === 'characters'
                   ? tr('navigation.charactersHeading')
                   : libraryView
@@ -608,47 +604,47 @@ export default function App() {
             <p>{subtitle}</p>
           </div>
           <div className="header-actions">
-            {view === 'clubs' && club && (
+            {view === 'boards' && board && (
               <>
                 <div className="dropdown-wrap">
                   <button
-                    className="icon-button more-club"
-                    aria-label={tr('clubs.actionsLabel')}
-                    onClick={() => setClubMenu(!clubMenu)}
+                    className="icon-button more-board"
+                    aria-label={tr('boards.actionsLabel')}
+                    onClick={() => setBoardMenu(!boardMenu)}
                   >
                     <MoreHorizontal size={22} />
                   </button>
-                  {clubMenu && (
+                  {boardMenu && (
                     <div className="dropdown">
                       <button
                         onClick={() => {
-                          setEditor({ kind: 'club', id: club.id });
-                          setClubMenu(false);
+                          setEditor({ kind: 'board', id: board.id });
+                          setBoardMenu(false);
                         }}
                       >
                         <Pencil size={15} />
-                        {tr('clubs.edit')}
+                        {tr('boards.edit')}
                       </button>
                       <button
-                        disabled={data.clubs.length >= BOARD_CREATION_LIMIT}
+                        disabled={data.boards.length >= BOARD_CREATION_LIMIT}
                         title={
-                          data.clubs.length >= BOARD_CREATION_LIMIT
+                          data.boards.length >= BOARD_CREATION_LIMIT
                             ? tr('validation.boardLimit', BOARD_CREATION_LIMIT)
                             : undefined
                         }
                         onClick={() => {
                           const copy = {
-                            ...club,
+                            ...board,
                             id: crypto.randomUUID(),
-                            name: tr('clubs.copyName', club.name.slice(0, 70)),
-                            characterIds: [...club.characterIds],
-                            connections: club.connections.map((e) => ({
+                            name: tr('boards.copyName', board.name.slice(0, 70)),
+                            characterIds: [...board.characterIds],
+                            connections: board.connections.map((e) => ({
                               ...e,
                               id: crypto.randomUUID(),
                             })),
                           };
-                          saveClub(copy);
-                          setClubMenu(false);
+                          saveBoard(copy);
+                          setBoardMenu(false);
                         }}
                       >
                         <Copy size={15} />
@@ -658,21 +654,21 @@ export default function App() {
                         className="danger-text"
                         onClick={() => {
                           setConfirmation({
-                            title: tr('clubs.deleteTitle'),
-                            text: tr('clubs.deleteMessage', club.name),
+                            title: tr('boards.deleteTitle'),
+                            text: tr('boards.deleteMessage', board.name),
                             action: () => {
                               commit((data) => {
-                                const clubs = data.clubs.filter((c) => c.id !== club.id);
-                                return { ...data, clubs, activeClubId: clubs[0]?.id || null };
+                                const boards = data.boards.filter((c) => c.id !== board.id);
+                                return { ...data, boards, activeBoardId: boards[0]?.id || null };
                               });
                               clearSelection();
                             },
                           });
-                          setClubMenu(false);
+                          setBoardMenu(false);
                         }}
                       >
                         <Trash2 size={15} />
-                        {tr('clubs.delete')}
+                        {tr('boards.delete')}
                       </button>
                     </div>
                   )}
@@ -692,8 +688,8 @@ export default function App() {
                       <button
                         onClick={() =>
                           void exportJSON(
-                            createStoriesTransfer(data, [club.id]),
-                            tr('filenames.story', club.name),
+                            createStoriesTransfer(data, [board.id]),
+                            tr('filenames.story', board.name),
                           )
                         }
                       >
@@ -839,20 +835,20 @@ export default function App() {
           </div>
         )}
 
-        {view === 'clubs' && (
+        {view === 'boards' && (
           <div className="editor-layout">
             <section
               className={`canvas ${linking ? 'linking' : ''}`}
               aria-label={tr('diagram.editorLabel')}
             >
-              {club ? (
+              {board ? (
                 <>
                   <div className="canvas-top">
                     <div className="canvas-meta">
                       <span className="status-dot" />
                       {tr('diagram.heading')}
                       <span className="meta-divider">/</span>
-                      {club.characterIds.length}
+                      {board.characterIds.length}
                       {tr('counts.membersSuffix')}
                     </div>
                     <button
@@ -901,11 +897,11 @@ export default function App() {
                       style={{ transform: `translate(${pan.x}px,${pan.y}px) scale(${zoom})` }}
                     >
                       <Diagram
-                        club={club}
+                        board={board}
                         characters={data.characters}
                         types={relationTypes}
                         onMove={(id, position) =>
-                          updateClub((c) => ({
+                          updateBoard((c) => ({
                             ...c,
                             layout: { ...c.layout, [id]: { ...c.layout?.[id], ...position } },
                           }))
@@ -974,17 +970,17 @@ export default function App() {
                   <div className="empty-orbit">
                     <OrbitMark size={120} />
                   </div>
-                  <span className="eyebrow">{tr('clubs.emptyEyebrow')}</span>
-                  <h2>{club ? tr('clubs.noMembersHeading') : tr('clubs.emptyHeading')}</h2>
-                  <p>{club ? tr('clubs.noMembersDescription') : tr('clubs.emptyDescription')}</p>
+                  <span className="eyebrow">{tr('boards.emptyEyebrow')}</span>
+                  <h2>{board ? tr('boards.noMembersHeading') : tr('boards.emptyHeading')}</h2>
+                  <p>{board ? tr('boards.noMembersDescription') : tr('boards.emptyDescription')}</p>
                   <button
                     className="button primary"
-                    onClick={() => setEditor({ kind: club ? 'participants' : 'club' })}
+                    onClick={() => setEditor({ kind: board ? 'participants' : 'board' })}
                   >
                     <Plus size={17} />
-                    {club ? tr('characters.add') : tr('clubs.createFirst')}
+                    {board ? tr('characters.add') : tr('boards.createFirst')}
                   </button>
-                  {!club && !data.characters.length && (
+                  {!board && !data.characters.length && (
                     <button
                       className="text-button demo-button"
                       onClick={() => {
@@ -1009,7 +1005,7 @@ export default function App() {
                     <i />
                     <span>
                       <b>03</b>
-                      {tr('clubs.defaultName')}
+                      {tr('boards.defaultName')}
                     </span>
                   </div>
                 </div>
@@ -1017,7 +1013,7 @@ export default function App() {
             </section>
 
             <BoardInspector
-              board={club}
+              board={board}
               nodes={data.characters}
               selected={selectedCharacter}
               onSelect={(id) => {
@@ -1029,7 +1025,7 @@ export default function App() {
               onMembers={() => setEditor({ kind: 'participants' })}
               onNew={newCharacter}
               onLock={(id) =>
-                updateClub((c) => ({
+                updateBoard((c) => ({
                   ...c,
                   layout: {
                     ...c.layout,
@@ -1042,7 +1038,7 @@ export default function App() {
                   title: tr('members.removeTitle'),
                   text: tr('members.removeMessage', data.characters.find((n) => n.id === id)?.name),
                   action: () => {
-                    updateClub((c) => removeFromClub(c, id));
+                    updateBoard((c) => removeFromBoard(c, id));
                     clearSelection();
                   },
                 })
@@ -1113,6 +1109,7 @@ export default function App() {
 
         {view === 'settings' && (
           <section className="settings-page">
+            <UpdateSettings state={updateState} flush={library.flush} />
             <div className="settings-card compact">
               <h2>{tr('settings.language')}</h2>
               <label className="field">
@@ -1157,12 +1154,12 @@ export default function App() {
                   <span>{tr('counts.characters')}</span>
                 </div>
                 <div>
-                  <strong>{data.clubs.length}</strong>
-                  <span>{tr('counts.clubs')}</span>
+                  <strong>{data.boards.length}</strong>
+                  <span>{tr('counts.boards')}</span>
                 </div>
                 <div>
                   <strong>
-                    {data.clubs.reduce((sum, c) => sum + boardEdges(c, data.characters).length, 0)}
+                    {data.boards.reduce((sum, c) => sum + boardEdges(c, data.characters).length, 0)}
                   </strong>
                   <span>{tr('counts.relationships')}</span>
                 </div>
@@ -1263,7 +1260,7 @@ export default function App() {
                 </p>
                 <p>
                   <b>3</b>
-                  <span>{tr('help.clubStep')}</span>
+                  <span>{tr('help.boardStep')}</span>
                 </p>
               </div>
               <p className="field-hint">{tr('help.shortcuts')}</p>
@@ -1272,6 +1269,11 @@ export default function App() {
         )}
 
         <footer className="statusbar">
+          {updateState.status === 'ready' && (
+            <button className="button secondary" onClick={() => changeView('settings')}>
+              {tr('updates.readyNotice', updateState.version)}
+            </button>
+          )}
           <span className={`save-status ${library.status === 'error' ? 'error' : ''}`}>
             {library.status === 'saving' ? (
               <LoadingIcon size={12} className="spin" />
@@ -1285,8 +1287,8 @@ export default function App() {
                 : tr('save.saved')}
           </span>
           <span>
-            {view === 'clubs' && club
-              ? tr('counts.diagramSummary', connections.length, club.characterIds.length)
+            {view === 'boards' && board
+              ? tr('counts.diagramSummary', connections.length, board.characterIds.length)
               : tr('app.footer')}
           </span>
         </footer>
@@ -1299,8 +1301,8 @@ export default function App() {
               ? tr(editor.id ? 'characters.edit' : 'characters.new')
               : editor.kind === 'folder'
                 ? tr(editor.id ? 'folders.edit' : 'folders.new')
-                : editor.kind === 'club'
-                  ? tr(editor.id ? 'clubs.edit' : 'clubs.new')
+                : editor.kind === 'board'
+                  ? tr(editor.id ? 'boards.edit' : 'boards.new')
                   : editor.kind === 'participants'
                     ? tr('members.title')
                     : tr('connections.new')
@@ -1315,7 +1317,7 @@ export default function App() {
               onSave={saveCharacter}
               onClose={closeEditor}
               initialKind={editor.nodeKind}
-              canAddToClub={view === 'clubs' && !!club}
+              canAddToBoard={view === 'boards' && !!board}
               folders={data.folders}
               initialFolderId={
                 libraryView && activeFolder && activeFolder !== ':unfiled' ? activeFolder : null
@@ -1332,36 +1334,36 @@ export default function App() {
               onClose={closeEditor}
             />
           )}
-          {editor.kind === 'club' && (
-            <ClubForm
-              club={data.clubs.find((c) => c.id === editor.id)}
-              onSave={saveClub}
+          {editor.kind === 'board' && (
+            <BoardForm
+              board={data.boards.find((c) => c.id === editor.id)}
+              onSave={saveBoard}
               onClose={closeEditor}
             />
           )}
-          {editor.kind === 'connection' && club && (
+          {editor.kind === 'connection' && board && (
             <BranchForm
-              board={club}
+              board={board}
               nodes={data.characters}
               childId={editor.targetId || editor.sourceId}
               parentId={editor.targetId ? editor.sourceId : undefined}
               onClose={closeEditor}
               onSave={(next) => {
-                updateClub(() => next);
+                updateBoard(() => next);
                 closeEditor();
                 notify(tr('notifications.connectionSaved'));
               }}
             />
           )}
-          {editor.kind === 'participants' && club && (
+          {editor.kind === 'participants' && board && (
             <ParticipantsForm
-              club={club}
+              board={board}
               characters={data.characters}
               folders={data.folders}
               onClose={closeEditor}
               onNewCharacter={newCharacter}
               onSave={(ids) => {
-                updateClub((c) => retainMembers(c, ids));
+                updateBoard((c) => retainMembers(c, ids));
                 closeEditor();
                 clearSelection();
               }}

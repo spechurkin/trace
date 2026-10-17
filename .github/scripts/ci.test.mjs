@@ -19,7 +19,7 @@ const context = {
 
 async function assetFixture(t, releaseVersion = version) {
   const parent = path.resolve(tmpdir());
-  const directory = await mkdtemp(path.join(parent, 'clubs-ci-'));
+  const directory = await mkdtemp(path.join(parent, 'trace-ci-'));
   t.after(async () => {
     assert.equal(path.dirname(directory), parent);
     await rm(directory, { recursive: true, force: true });
@@ -37,6 +37,29 @@ async function assetFixture(t, releaseVersion = version) {
   ];
   for (const name of builtAssets) {
     await writeFile(path.join(directory, name), `test package: ${name}`);
+  }
+  await writeFile(
+    path.join(directory, `Trace-${releaseVersion}-windows-setup.exe.blockmap`),
+    'blockmap',
+  );
+  for (const [manifest, name] of [
+    ['latest.yml', `Trace-${releaseVersion}-windows-setup.exe`],
+    ['latest-linux.yml', `Trace-${releaseVersion}-linux-x86_64.AppImage`],
+  ]) {
+    const data = await readFile(path.join(directory, name));
+    await writeFile(
+      path.join(directory, manifest),
+      JSON.stringify({
+        version: releaseVersion,
+        files: [
+          {
+            url: name,
+            sha512: createHash('sha512').update(data).digest('base64'),
+            size: data.length,
+          },
+        ],
+      }),
+    );
   }
   return directory;
 }
@@ -68,7 +91,7 @@ function apiFixture({ releases = [], assets = [], failUpload, corruptUpload } = 
         };
       }
       return {
-        data: { id: 42, html_url: 'https://github.com/example/clubs/releases/tag/v1.2.3', ...args },
+        data: { id: 42, html_url: 'https://github.com/example/trace/releases/tag/v1.2.3', ...args },
       };
     };
   }
@@ -93,10 +116,13 @@ function apiFixture({ releases = [], assets = [], failUpload, corruptUpload } = 
     },
   };
   return {
-    github, core: {
+    github,
+    core: {
       info() {
-      }, summary,
-    }, calls,
+      },
+      summary,
+    },
+    calls,
   };
 }
 
@@ -121,12 +147,12 @@ test('rejects invalid versions and mismatched tags or lockfile versions', () => 
   }
 });
 
-test('writes independently verifiable checksums for all eight packages', async (t) => {
+test('writes independently verifiable checksums for packages and update metadata', async (t) => {
   const directory = await assetFixture(t);
   const names = await prepareRelease(directory, version);
-  assert.equal(names.length, 9);
+  assert.equal(names.length, 12);
   const lines = (await readFile(path.join(directory, 'SHA256SUMS'), 'utf8')).trim().split('\n');
-  assert.equal(lines.length, 8);
+  assert.equal(lines.length, 11);
   for (const line of lines) {
     const [digest, name] = line.split('  ');
     const data = await readFile(path.join(directory, name));
@@ -155,10 +181,50 @@ test('creates a draft and publishes only after every upload is verified', async 
   assert.equal(mutations[0].method, 'createRelease');
   assert.equal(mutations[0].args.draft, true);
   assert.equal(mutations[0].args.generate_release_notes, true);
-  assert.equal(mutations.filter((call) => call.method === 'uploadReleaseAsset').length, 9);
+  assert.equal(mutations.filter((call) => call.method === 'uploadReleaseAsset').length, 12);
   assert.equal(mutations.at(-1).method, 'updateRelease');
   assert.equal(mutations.at(-1).args.draft, false);
   assert.equal(mutations.at(-1).args.prerelease, false);
+});
+
+test('rejects missing feeds, wrong versions, unsafe targets and corrupt update hashes', async (t) => {
+  for (const change of ['missing', 'version', 'target', 'hash', 'size', 'legacy']) {
+    const directory = await assetFixture(t);
+    const file = path.join(directory, 'latest.yml');
+    const info = JSON.parse(await readFile(file, 'utf8'));
+    if (change === 'missing') await rm(file);
+    else {
+      if (change === 'version') info.version = '0.1.0';
+      if (change === 'target') info.files[0].url = '../installer.exe';
+      if (change === 'hash') info.files[0].sha512 = 'wrong';
+      if (change === 'size') info.files[0].size += 1;
+      if (change === 'legacy') {
+        info.path = portableName;
+        info.sha512 = info.files[0].sha512;
+      }
+      await writeFile(file, JSON.stringify(info));
+    }
+    const api = apiFixture();
+    await assert.rejects(
+      publishRelease({ ...api, context, version, directory }),
+      /Incomplete|Invalid|Unexpected|mismatch/,
+    );
+    assert.equal(api.calls.length, 0);
+  }
+});
+
+test('accepts Linux metadata when the legacy target is DEB and AppImage is in files', async (t) => {
+  const directory = await assetFixture(t);
+  const file = path.join(directory, 'latest-linux.yml');
+  const info = JSON.parse(await readFile(file, 'utf8'));
+  const name = `Trace-${version}-linux-amd64.deb`;
+  const data = await readFile(path.join(directory, name));
+  const sha512 = createHash('sha512').update(data).digest('base64');
+  info.files.unshift({ url: name, size: data.length, sha512 });
+  info.path = name;
+  info.sha512 = sha512;
+  await writeFile(file, JSON.stringify(info));
+  await prepareRelease(directory, version);
 });
 
 test('upload failures and incorrect upload digests leave the release unpublished', async (t) => {
@@ -198,7 +264,7 @@ test('resumes a draft, reuses matching assets and replaces incomplete assets', a
     api.calls.some((call) => call.method === 'createRelease'),
     false,
   );
-  assert.equal(api.calls.filter((call) => call.method === 'uploadReleaseAsset').length, 8);
+  assert.equal(api.calls.filter((call) => call.method === 'uploadReleaseAsset').length, 11);
   assert.equal(api.calls.find((call) => call.method === 'deleteReleaseAsset').args.asset_id, 2);
 });
 

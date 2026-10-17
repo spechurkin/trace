@@ -1,4 +1,4 @@
-import { formatClubCount, getLocale, tr } from '../shared/i18n';
+import { formatBoardCount, getLocale, tr } from '../shared/i18n';
 import { useEffect, useState } from 'react';
 import {
   ChevronDown,
@@ -314,8 +314,8 @@ export default function CharacterLibrary({
                     <p>{character.notes || tr('characters.defaultNotes')}</p>
                     <div className="card-bottom">
                       <span>
-                        {formatClubCount(
-                          data.clubs.filter((club) => club.characterIds.includes(character.id))
+                        {formatBoardCount(
+                          data.boards.filter((board) => board.characterIds.includes(character.id))
                             .length,
                         )}
                       </span>

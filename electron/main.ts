@@ -7,6 +7,7 @@ import {
   type IpcMainInvokeEvent,
   Menu,
   net,
+  powerMonitor,
   protocol,
   session,
   shell,
@@ -14,11 +15,16 @@ import {
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { writeFile } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
 import { databaseSchema, type ExportFormat } from '../shared/model';
 import { describeImport, mergeTransfer, transferSchema } from '../shared/transfer';
 import { Repository } from './repository';
 import { type DataDirectory, prepareDataDirectory } from './data-directory';
-import { readLanguage, saveLanguage } from './preferences';
+import { readLanguage, readUpdatePreferences, saveLanguage, saveUpdateCheck, saveUpdateInterval } from './preferences';
+import { autoUpdater } from 'electron-updater';
+import { isUpdateInterval, supportsAutoUpdate } from '../shared/updates';
+import { UpdateController } from './updates';
+import { UpdateSchedule } from './update-schedule';
 
 app.setName(tr('app.name'));
 let dataDirectory: DataDirectory = { directory: path.join(app.getPath('appData'), 'Trace') };
@@ -39,6 +45,16 @@ protocol.registerSchemesAsPrivileged([
 let mainWindow: BrowserWindow | null = null;
 let repository: Repository;
 let quitting = false;
+let updates: UpdateController;
+let updateSchedule: UpdateSchedule | undefined;
+const releasesUrl = 'https://github.com/spechurkin/trace/releases/latest';
+const autoUpdatesSupported = supportsAutoUpdate(
+  app.isPackaged,
+  process.platform,
+  process.env,
+  existsSync(path.join(path.dirname(app.getPath('exe')), 'Uninstall Trace.exe')),
+);
+
 const developmentUrl = !app.isPackaged ? process.env.TRACE_DEV_URL : undefined;
 
 function authorize(event: IpcMainInvokeEvent) {
@@ -56,6 +72,33 @@ function authorize(event: IpcMainInvokeEvent) {
 }
 
 function registerHandlers() {
+  ipcMain.handle('updates:state', (event) => {
+    authorize(event);
+    return updates.state;
+  });
+  ipcMain.handle('updates:check', async (event) => {
+    authorize(event);
+    await updateSchedule?.checkNow();
+    return updates.state;
+  });
+  ipcMain.handle('updates:interval', async (event, days: unknown) => {
+    authorize(event);
+    if (!isUpdateInterval(days)) throw new Error(tr('updates.invalidInterval'));
+    await saveUpdateInterval(dataDirectory.directory, days);
+    updates.setInterval(days);
+    updateSchedule?.setInterval(days);
+  });
+  ipcMain.handle('updates:install', async (event) => {
+    authorize(event);
+    await updates.install(async () => {
+      await repository.flush();
+    });
+  });
+  ipcMain.handle('updates:releases', (event) => {
+    authorize(event);
+    return shell.openExternal(releasesUrl);
+  });
+
   ipcMain.handle('language:get', (event) => {
     authorize(event);
     return getLocale();
@@ -115,7 +158,7 @@ function registerHandlers() {
         'backup.replaceDetail',
         data.characters.length,
         data.folders.length,
-        data.clubs.length,
+        data.boards.length,
       ),
       buttons: [tr('actions.cancel'), tr('actions.replace')],
       defaultId: 0,
@@ -249,6 +292,14 @@ else {
     .whenReady()
     .then(async () => {
       repository = new Repository(app.getPath('userData'));
+      updates = new UpdateController(
+        autoUpdatesSupported ? autoUpdater : undefined,
+        app.getVersion(),
+        (state) => mainWindow?.webContents.send('updates:changed', state),
+        app.isPackaged,
+        readUpdatePreferences(dataDirectory.directory).intervalDays,
+      );
+
       const root = path.join(app.getAppPath(), 'dist');
       protocol.handle('trace', (request) => {
         const url = new URL(request.url);
@@ -269,6 +320,19 @@ else {
       updateMenu();
       registerHandlers();
       await createWindow();
+      if (autoUpdatesSupported) {
+        updateSchedule = new UpdateSchedule(
+          readUpdatePreferences(dataDirectory.directory),
+          () => updates.check(),
+          (time) => saveUpdateCheck(dataDirectory.directory, time),
+        );
+        updateSchedule.start();
+        powerMonitor.on('resume', () => updateSchedule?.resume());
+        app.once('will-quit', () => {
+          updateSchedule?.stop();
+        });
+      }
+
       app.on('activate', () => {
         if (BrowserWindow.getAllWindows().length === 0) void createWindow();
       });
@@ -281,7 +345,8 @@ else {
     if (process.platform !== 'darwin') app.quit();
   });
   app.on('before-quit', (event) => {
-    if (quitting || !repository) return;
+    // The updater has already flushed saves and owns the install/restart sequence.
+    if (quitting || !repository || updates?.state.status === 'installing') return;
     event.preventDefault();
     void repository.flush().finally(() => {
       quitting = true;

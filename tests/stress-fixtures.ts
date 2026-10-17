@@ -18,7 +18,7 @@ export function stressDatabase(nodes = 500, boards = 1, chain = false): Database
       answers: Object.fromEntries(questionKeys[kind].map((key) => [key, `Answer ${i} ${key}`])),
     };
   });
-  data.clubs = Array.from({ length: boards }, (_, b) => {
+  data.boards = Array.from({ length: boards }, (_, b) => {
     const members = data.characters.slice(0, 500).map((node) => node.id);
     return {
       id: `b${b}`,
@@ -38,6 +38,6 @@ export function stressDatabase(nodes = 500, boards = 1, chain = false): Database
       ),
     };
   });
-  data.activeClubId = data.clubs[0]?.id || null;
+  data.activeBoardId = data.boards[0]?.id || null;
   return data;
 }

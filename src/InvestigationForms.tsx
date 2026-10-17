@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { tr } from '../shared/i18n';
-import type { Character, Club } from '../shared/model';
+import type { Board, Character } from '../shared/model';
 import { canParent, CULPRIT, parentOf, setParent } from '../shared/investigation';
 import { Field } from './components';
 import { sortByName } from './sorting';
@@ -13,11 +13,11 @@ export function BranchForm({
   onSave,
   onClose,
 }: {
-  board: Club;
+  board: Board;
   nodes: Character[];
   childId?: string;
   parentId?: string;
-  onSave: (board: Club) => void;
+  onSave: (board: Board) => void;
   onClose: () => void;
 }) {
   const [child, setChild] = useState(

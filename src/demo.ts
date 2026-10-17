@@ -1,12 +1,6 @@
 import { getLocale } from '../shared/i18n';
 import { type Character, type Database, emptyDatabase } from '../shared/model';
-import {
-  BRANCH_COLORS,
-  branchOf,
-  CULPRIT,
-  type NodeKind,
-  questionKeys,
-} from '../shared/investigation';
+import { BRANCH_COLORS, branchOf, CULPRIT, type NodeKind, questionKeys } from '../shared/investigation';
 import english from './demo-content/en.json' with { type: 'json' };
 import russian from './demo-content/ru.json' with { type: 'json' };
 
@@ -84,7 +78,7 @@ export function demoDatabase(): Database {
         { id: kind, name: content.folders[kind], parentId: `dead-witness-${kind}`, kind },
       ]),
     ],
-    clubs: [
+    boards: [
       {
         id: 'dead-witness',
         name: content.name,
@@ -104,6 +98,6 @@ export function demoDatabase(): Database {
         ),
       },
     ],
-    activeClubId: 'dead-witness',
+    activeBoardId: 'dead-witness',
   };
 }

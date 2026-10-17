@@ -143,6 +143,9 @@ jobs:
             release/Trace/*.zip
             release/Trace/*.AppImage
             release/Trace/*.deb
+            release/Trace/*.exe.blockmap
+            release/Trace/latest.yml
+            release/Trace/latest-linux.yml
           if-no-files-found: error
           compression-level: 0
           retention-days: 30
@@ -191,7 +194,10 @@ jobs:
           path: release-assets
           merge-multiple: true
 
-      - name: Validate packages and generate SHA-256 checksums
+      - name: Install release validation dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Validate update manifests and generate SHA-256 checksums
         run: node .github/scripts/prepare-release.mjs
 
       - name: Upload all assets and publish release

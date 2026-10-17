@@ -1,18 +1,8 @@
 import { russianText } from './russian-fixtures';
 import { describe, expect, it } from 'vitest';
-import {
-  type Database,
-  databaseSchema,
-  deleteCharacterFolder,
-  emptyDatabase,
-} from '../shared/model';
+import { type Database, databaseSchema, deleteCharacterFolder, emptyDatabase } from '../shared/model';
 import { folderEntries, folderPath, folderSubtree, folderTrail } from '../shared/folders';
-import {
-  createCharactersTransfer,
-  createStoriesTransfer,
-  mergeTransfer,
-  transferSchema,
-} from '../shared/transfer';
+import { createCharactersTransfer, createStoriesTransfer, mergeTransfer, transferSchema } from '../shared/transfer';
 import { demoDatabase } from './original-demo';
 
 function nestedLibrary(): Database {
@@ -36,21 +26,21 @@ describe('nested character folders', () => {
   it('migrates flat version 2 libraries without changing characters, histories or the input file', () => {
     const data = demoDatabase();
     data.characters[0].folderId = 'family';
-    const { clubs, activeClubId, ...rest } = data;
+    const { boards, activeBoardId, ...rest } = data;
     const old = {
       ...rest,
       version: 2,
-      circles: clubs,
-      activeCircleId: activeClubId,
+      circles: boards,
+      activeCircleId: activeBoardId,
       folders: [{ id: 'family', name: russianText('demo.relationships.family') }],
     };
     const migrated = databaseSchema.parse(old);
-    expect(migrated.version).toBe(4);
+    expect(migrated.version).toBe(5);
     expect(migrated.folders).toEqual([
       { id: 'family', name: russianText('demo.relationships.family'), parentId: null },
     ]);
     expect(migrated.characters).toEqual(data.characters);
-    expect(migrated.clubs).toEqual(data.clubs);
+    expect(migrated.boards).toEqual(data.boards);
     expect(old.version).toBe(2);
     expect(old.folders).toEqual([{ id: 'family', name: russianText('demo.relationships.family') }]);
   });
@@ -95,7 +85,7 @@ describe('nested character folders', () => {
     expect(deleted.characters[0].folderId).toBe('world');
     expect(deleted.characters[2].folderId).toBe('world');
     expect(deleted.characters[1].folderId).toBe('other-family');
-    expect(deleted.clubs).toEqual(data.clubs);
+    expect(deleted.boards).toEqual(data.boards);
     expect(deleted.relationTypes).toEqual(data.relationTypes);
     expect(databaseSchema.parse(deleted)).toEqual(deleted);
     expect(deleteCharacterFolder(data, 'world').characters[0].folderId).toBeNull();
@@ -123,11 +113,11 @@ describe('nested folders in JSON transfer files', () => {
       new Set(['world', 'family', 'main']),
     );
     expect(one.data.characters).toEqual([data.characters[0]]);
-    expect(one.data.clubs).toEqual([]);
+    expect(one.data.boards).toEqual([]);
     expect(transferSchema.parse(JSON.parse(JSON.stringify(one)))).toEqual(one);
     const story = createStoriesTransfer(data);
     expect(story.data.folders.map((folder) => folder.id)).not.toContain('empty');
-    expect(mergeTransfer(emptyDatabase(), story).data.clubs).toEqual(data.clubs);
+    expect(mergeTransfer(emptyDatabase(), story).data.boards).toEqual(data.boards);
   });
   it('exports an entire selected branch including empty subfolders and the required ancestors, excluding other branches', () => {
     const file = createCharactersTransfer(nestedLibrary(), { folderId: 'family' });
@@ -136,7 +126,7 @@ describe('nested folders in JSON transfer files', () => {
       new Set(['main', 'family', 'world', 'empty']),
     );
     expect(file.data.relationTypes).toEqual([]);
-    expect(file.data.clubs).toEqual([]);
+    expect(file.data.boards).toEqual([]);
     expect(
       folderEntries(mergeTransfer(emptyDatabase(), file).data.folders).map((entry) => entry.path),
     ).toEqual([
@@ -159,7 +149,7 @@ describe('nested folders in JSON transfer files', () => {
     expect(paths).toContain(russianText('samples.worldFamilyMainPath'));
     expect(paths).toContain(russianText('samples.anotherStoryFamilyPath'));
     expect(merged.summary.folders).toBe(4);
-    expect(merged.data.clubs).toEqual(before.clubs);
+    expect(merged.data.boards).toEqual(before.boards);
     expect(mergeTransfer(merged.data, file).data).toEqual(merged.data);
   });
   it('reuses an identical hierarchy with different IDs and imports old flat-folder transfer files', () => {
@@ -181,7 +171,10 @@ describe('nested folders in JSON transfer files', () => {
       version: 1,
       kind: 'characters',
       data: {
-        ...emptyDatabase(),
+        characters: [],
+        relationTypes: [],
+        circles: [],
+        activeCircleId: null,
         version: 2,
         folders: [{ id: 'flat', name: russianText('samples.legacyFolder') }],
       },

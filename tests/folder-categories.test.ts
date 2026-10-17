@@ -31,7 +31,7 @@ describe('category-owned folders', () => {
     const before = structuredClone(legacy);
     const migrated = databaseSchema.parse(legacy);
     expect(legacy).toEqual(before);
-    expect(migrated.clubs).toEqual(original.clubs);
+    expect(migrated.boards).toEqual(original.boards);
     expect(new Set(migrated.folders.map((folder) => folder.id)).size).toBe(migrated.folders.length);
     for (const node of migrated.characters) {
       expect(folderKindOf(migrated.folders.find((folder) => folder.id === node.folderId)!)).toBe(

@@ -1,7 +1,7 @@
 {
   "name": "trace",
   "productName": "Trace",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Offline investigation builder",
   "author": "HoloLight17",
   "license": "MIT",
@@ -13,6 +13,7 @@
     "dev:web": "vite --host 127.0.0.1",
     "typecheck": "tsc --noEmit",
     "format": "prettier --write src shared electron tests scripts/*.mjs *.json *.ts *.html README.md .github/workflows/*.yml",
+    "install:proj": "npm install",
     "build": "npm run typecheck && vite build && node scripts/build-electron.mjs",
     "test": "vitest run",
     "test:desktop": "npm run build && playwright test",
@@ -30,7 +31,8 @@
     "lucide-react": "1.49.0",
     "react": "19.3.0",
     "react-dom": "19.3.0",
-    "zod": "4.6.5"
+    "zod": "4.6.5",
+    "electron-updater": "6.8.9"
   },
   "devDependencies": {
     "@playwright/test": "1.63.0",
@@ -44,7 +46,8 @@
     "prettier": "3.9.9",
     "typescript": "7.0.2",
     "vite": "8.3.1",
-    "vitest": "5.0.3"
+    "vitest": "5.0.3",
+    "js-yaml": "4.3.2"
   },
   "build": {
     "appId": "studio.trace.investigations",
@@ -104,6 +107,14 @@
       "category": "Graphics",
       "icon": "resources/icon.png",
       "maintainer": "Trace"
-    }
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "spechurkin",
+        "repo": "trace",
+        "channel": "latest"
+      }
+    ]
   }
 }

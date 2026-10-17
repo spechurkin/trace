@@ -1,13 +1,8 @@
-import {
-  _electron as electron,
-  type ElectronApplication,
-  expect,
-  type Page,
-  test,
-} from '@playwright/test';
+import { _electron as electron, type ElectronApplication, expect, type Page, test } from '@playwright/test';
 import { mkdir, mkdtemp } from 'node:fs/promises';
 import path from 'node:path';
 import { setLocale, tr } from '../../shared/i18n';
+import { demoDatabase } from '../../src/demo';
 
 let app: ElectronApplication, page: Page;
 test.beforeEach(async () => {
@@ -46,8 +41,8 @@ test.afterEach(async () => {
 });
 
 test('browser fallback creates nodes in IndexedDB and preserves them after reload', async () => {
-  await page.getByRole('button', { name: tr('clubs.createFirst'), exact: true }).click();
-  await page.getByRole('dialog').getByLabel(tr('clubs.nameLabel')).fill('Browser QA board');
+  await page.getByRole('button', { name: tr('boards.createFirst'), exact: true }).click();
+  await page.getByRole('dialog').getByLabel(tr('boards.nameLabel')).fill('Browser QA board');
   await page.getByRole('dialog').locator('button[type=submit]').click();
   await page
     .locator('.inspector')
@@ -79,4 +74,65 @@ test('browser malformed transfer import preserves IndexedDB and shows an error',
   await expect(page.locator('.toast')).toBeVisible();
   await page.reload();
   await expect(page.locator('.diagram-node')).toHaveCount(33);
+});
+
+test('browser converts a legacy library atomically and keeps the original across reloads', async () => {
+  const data = demoDatabase();
+  const { boards, activeBoardId, ...rest } = data;
+  const legacy = { ...rest, version: 4, clubs: boards, activeClubId: activeBoardId };
+  await page.evaluate(async (legacy) => {
+    await new Promise<void>((resolve, reject) => {
+      const request = indexedDB.open('trace-library', 1);
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => {
+        const db = request.result;
+        const transaction = db.transaction('library', 'readwrite');
+        transaction.objectStore('library').put(legacy, 'data');
+        transaction.oncomplete = () => {
+          db.close();
+          resolve();
+        };
+        transaction.onerror = () => {
+          db.close();
+          reject(transaction.error);
+        };
+      };
+    });
+  }, legacy);
+  for (let reload = 0; reload < 2; reload++) {
+    await page.reload();
+    await expect(page.locator('.save-status')).toHaveText(tr('save.saved'));
+    await expect(page.locator('.diagram-node')).toHaveCount(boards[0].characterIds.length + 1);
+    const entries = await page.evaluate(
+      async () =>
+        new Promise<{ key: IDBValidKey; value: unknown }[]>((resolve, reject) => {
+          const request = indexedDB.open('trace-library', 1);
+          request.onerror = () => reject(request.error);
+          request.onsuccess = () => {
+            const db = request.result;
+            const transaction = db.transaction('library');
+            const result: { key: IDBValidKey; value: unknown }[] = [];
+            const cursor = transaction.objectStore('library').openCursor();
+            cursor.onsuccess = () => {
+              if (cursor.result) {
+                result.push({ key: cursor.result.key, value: cursor.result.value });
+                cursor.result.continue();
+              }
+            };
+            transaction.oncomplete = () => {
+              db.close();
+              resolve(result);
+            };
+            transaction.onerror = () => {
+              db.close();
+              reject(transaction.error);
+            };
+          };
+        }),
+    );
+    expect(entries.find((entry) => entry.key === 'data')?.value).toEqual(data);
+    const originals = entries.filter((entry) => String(entry.key).startsWith('pre-migration-'));
+    expect(originals).toHaveLength(1);
+    expect(originals[0].value).toEqual(legacy);
+  }
 });

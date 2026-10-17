@@ -35,9 +35,9 @@ export function tr(message: Message, ...parameters: unknown[]): string {
   return template.replace(/\{(\d+)}/g, (_, index: string) => String(parameters[Number(index)]));
 }
 
-export function formatClubCount(count: number): string {
+export function formatBoardCount(count: number): string {
   const form = pluralRules[locale].select(count);
   const message =
-    form === 'one' ? 'counts.clubsOne' : form === 'few' ? 'counts.clubsFew' : 'counts.clubs';
+    form === 'one' ? 'counts.boardsOne' : form === 'few' ? 'counts.boardsFew' : 'counts.boards';
   return `${count} ${tr(message)}`;
 }

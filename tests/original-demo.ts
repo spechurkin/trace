@@ -3,7 +3,7 @@ import type { Database } from '../shared/model';
 
 export function demoDatabase(): Database {
   return {
-    version: 4,
+    version: 5,
     folders: [],
     characters: [
       {
@@ -55,11 +55,11 @@ export function demoDatabase(): Database {
       { id: 'love', name: tr('demo.relationships.love'), color: '#d97f90' },
       { id: 'fear', name: tr('demo.relationships.fear'), color: '#d3a063' },
     ],
-    clubs: [
+    boards: [
       {
         id: 'lake',
-        name: tr('demo.club.name'),
-        description: tr('demo.club.description'),
+        name: tr('demo.board.name'),
+        description: tr('demo.board.description'),
         characterIds: ['nora', 'elias', 'mira', 'theo', 'ida', 'august'],
         connections: [
           {
@@ -121,6 +121,6 @@ export function demoDatabase(): Database {
         ],
       },
     ],
-    activeClubId: 'lake',
+    activeBoardId: 'lake',
   };
 }

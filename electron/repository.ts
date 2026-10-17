@@ -1,5 +1,7 @@
 import { tr } from '../shared/i18n';
 import { copyFile, mkdir, open, readFile, rename, stat } from 'node:fs/promises';
+import { constants } from 'node:fs';
+import { randomUUID } from 'node:crypto';
 import path from 'node:path';
 import { type Database, databaseSchema, emptyDatabase, type LoadResult } from '../shared/model';
 
@@ -27,20 +29,19 @@ export class Repository {
   async load(): Promise<LoadResult> {
     await this.queue;
     await mkdir(this.directory, { recursive: true });
+    let source = this.file;
+    let input: unknown;
+    let data: Database;
+    let warning: string | undefined;
     try {
-      const data = await this.readFile(this.file);
-      this.initialized = this.primaryValid = true;
-      return { data, path: this.file };
+      input = await this.readJsonFile(source);
+      data = databaseSchema.parse(input);
     } catch (error) {
       try {
-        const data = await this.readFile(this.file + '.bak');
-        this.initialized = true;
-        this.primaryValid = false;
-        return {
-          data,
-          path: this.file,
-          warning: tr('library.backupRecovered'),
-        };
+        source = this.file + '.bak';
+        input = await this.readJsonFile(source);
+        data = databaseSchema.parse(input);
+        warning = tr('library.backupRecovered');
       } catch (backupError) {
         if (
           (error as NodeJS.ErrnoException).code === 'ENOENT' &&
@@ -52,6 +53,22 @@ export class Repository {
         throw new Error(tr('errors.libraryRecovery'));
       }
     }
+    this.initialized = true;
+    this.primaryValid = source === this.file;
+    if (
+      typeof input === 'object' &&
+      input !== null &&
+      'version' in input &&
+      input.version !== data.version
+    ) {
+      const original = `${this.file}.pre-migration-v${input.version}-${randomUUID()}.json`;
+      // Keep an immutable original in addition to the rolling .bak file.
+      // Failure to preserve it must stop conversion before any save is written.
+      await copyFile(source, original, constants.COPYFILE_EXCL);
+      await this.save(data);
+      warning = [warning, tr('library.migrated', original)].filter(Boolean).join(' ');
+    }
+    return { data, path: this.file, ...(warning ? { warning } : {}) };
   }
 
   save(input: unknown, importing = false): Promise<void> {

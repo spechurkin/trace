@@ -1,19 +1,13 @@
 import { getLocale, type Message, tr } from '../shared/i18n';
 import { type FormEvent, useEffect, useRef, useState } from 'react';
 import { ImagePlus, Pencil, Plus, Search, Trash2, X } from 'lucide-react';
-import { type Character, type CharacterFolder, type Club, type Portrait } from '../shared/model';
+import { type Board, type Character, type CharacterFolder, type Portrait } from '../shared/model';
 import { Avatar, EmptyHint, Field } from './components';
 import { defaultPortraitTransform, readPortrait } from './portrait';
 import { PortraitEditor } from './PortraitEditor';
 import { folderEntries, folderKindOf, folderSubtree } from '../shared/folders';
 import { sortByName } from './sorting';
-import {
-  BRANCH_COLORS,
-  kindOf,
-  type NodeKind,
-  nodeLabel,
-  questionKeys,
-} from '../shared/investigation';
+import { BRANCH_COLORS, kindOf, type NodeKind, nodeLabel, questionKeys } from '../shared/investigation';
 
 type Actions = { onClose: () => void };
 
@@ -46,14 +40,14 @@ export function CharacterForm({
   character,
   onSave,
   onClose,
-  canAddToClub,
+                                canAddToBoard,
   folders,
   initialFolderId = null,
   initialKind = 'person',
 }: Actions & {
   character?: Character;
   onSave: (character: Character, add: boolean) => void;
-  canAddToClub: boolean;
+  canAddToBoard: boolean;
   folders: CharacterFolder[];
   initialFolderId?: string | null;
   initialKind?: NodeKind;
@@ -77,7 +71,7 @@ export function CharacterForm({
         ? initialFolderId
         : null,
   );
-  const [add, setAdd] = useState(canAddToClub && !character);
+  const [add, setAdd] = useState(canAddToBoard && !character);
   const [error, setError] = useState('');
   const [reading, setReading] = useState(false);
   const form = useRef<HTMLFormElement>(null);
@@ -283,7 +277,7 @@ export function CharacterForm({
           rows={3}
         />
       </Field>
-      {!character && canAddToClub && (
+      {!character && canAddToBoard && (
         <label className="checkbox-row">
           <input type="checkbox" checked={add} onChange={(e) => setAdd(e.target.checked)} />
           <span>{tr('characters.addImmediately')}</span>
@@ -388,66 +382,67 @@ export function FolderForm({
   );
 }
 
-export function ClubForm({
-  club,
+export function BoardForm({
+                            board,
   onSave,
   onClose,
-}: Actions & { club?: Club; onSave: (club: Club) => void }) {
-  const [name, setName] = useState(club?.name || '');
-  const [description, setDescription] = useState(club?.description || '');
+                          }: Actions & { board?: Board; onSave: (board: Board) => void }) {
+  const [name, setName] = useState(board?.name || '');
+  const [description, setDescription] = useState(board?.description || '');
   return (
     <form
       onSubmit={(e) => {
         e.preventDefault();
         if (name.trim())
           onSave({
-            id: club?.id || crypto.randomUUID(),
+            ...board,
+            id: board?.id || crypto.randomUUID(),
             name: name.trim(),
             description: description.trim(),
-            characterIds: club?.characterIds || [],
-            connections: club?.connections || [],
-            layout: club?.layout || {},
+            characterIds: board?.characterIds || [],
+            connections: board?.connections || [],
+            layout: board?.layout || {},
           });
       }}
     >
-      <Field label={tr('clubs.nameLabel')}>
+      <Field label={tr('boards.nameLabel')}>
         <input
           maxLength={80}
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder={tr('clubs.namePlaceholder')}
+          placeholder={tr('boards.namePlaceholder')}
           required
         />
       </Field>
-      <Field label={tr('forms.descriptionLabel')} hint={tr('clubs.descriptionHint')}>
+      <Field label={tr('forms.descriptionLabel')} hint={tr('boards.descriptionHint')}>
         <textarea
           maxLength={2000}
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          placeholder={tr('clubs.descriptionPlaceholder')}
+          placeholder={tr('boards.descriptionPlaceholder')}
           rows={3}
         />
       </Field>
-      <Footer onClose={onClose} label={club ? tr('actions.saveChanges') : tr('clubs.create')} />
+      <Footer onClose={onClose} label={board ? tr('actions.saveChanges') : tr('boards.create')} />
     </form>
   );
 }
 
 export function ParticipantsForm({
-  club,
+                                   board,
   characters,
   folders,
   onSave,
   onClose,
   onNewCharacter,
 }: Actions & {
-  club: Club;
+  board: Board;
   characters: Character[];
   folders: CharacterFolder[];
   onSave: (ids: string[]) => void;
   onNewCharacter: () => void;
 }) {
-  const [selected, setSelected] = useState(new Set(club.characterIds));
+  const [selected, setSelected] = useState(new Set(board.characterIds));
   const [search, setSearch] = useState('');
   const [folderFilter, setFolderFilter] = useState('');
   const subtree =
@@ -480,9 +475,9 @@ export function ParticipantsForm({
       onSubmit={(e) => {
         e.preventDefault();
         onSave([
-          ...club.characterIds.filter((id) => selected.has(id)),
+          ...board.characterIds.filter((id) => selected.has(id)),
           ...characters
-            .filter((c) => selected.has(c.id) && !club.characterIds.includes(c.id))
+            .filter((c) => selected.has(c.id) && !board.characterIds.includes(c.id))
             .map((c) => c.id),
         ]);
       }}
@@ -558,7 +553,7 @@ export function ParticipantsForm({
         <Plus size={16} />
         {tr('characters.createNew')}
       </button>
-      {club.characterIds.some((id) => !selected.has(id)) && (
+      {board.characterIds.some((id) => !selected.has(id)) && (
         <p className="field-hint">
           <Trash2 size={12} />
           {tr('members.removalHint')}

@@ -26,7 +26,7 @@ it('starts in English and translates generated examples and interpolated message
   );
   const example = demoDatabase();
   expect(example.characters[0].name).toBe('Henri Domye');
-  expect(example.clubs[0].name).toBe('The dead witness');
+  expect(example.boards[0].name).toBe('The dead witness');
   setLocale('ru');
   expect(tr('characters.editLabel', russianText('samples.noraFirstName'))).toBe(
     russianText('characters.editLabel', russianText('samples.noraFirstName')),
@@ -89,7 +89,7 @@ it('keeps Cyrillic text out of application, test and build source files', async 
 });
 
 it('persists language independently of library contents and handles invalid preferences', async () => {
-  const directory = await mkdtemp(path.join(os.tmpdir(), 'clubs-language-'));
+  const directory = await mkdtemp(path.join(os.tmpdir(), 'boards-language-'));
   directories.push(directory);
   const library = JSON.stringify(demoDatabase());
   await writeFile(path.join(directory, 'library.json'), library);

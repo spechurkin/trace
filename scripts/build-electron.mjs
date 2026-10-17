@@ -13,6 +13,6 @@ await build({
   platform: 'node',
   target: 'node24',
   format: 'cjs',
-  external: ['electron'],
+  external: ['electron', 'electron-updater'],
   sourcemap: false,
 });

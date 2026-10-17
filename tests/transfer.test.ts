@@ -1,12 +1,7 @@
 import { russianText } from './russian-fixtures';
 import { describe, expect, it } from 'vitest';
 import { type Database, databaseSchema, emptyDatabase } from '../shared/model';
-import {
-  createCharactersTransfer,
-  createStoriesTransfer,
-  mergeTransfer,
-  transferSchema,
-} from '../shared/transfer';
+import { createCharactersTransfer, createStoriesTransfer, mergeTransfer, transferSchema } from '../shared/transfer';
 
 function fixture(): Database {
   return {
@@ -43,7 +38,7 @@ function fixture(): Database {
       { id: 'fear', name: russianText('demo.relationships.fear'), color: '#112233' },
       { id: 'unused-type', name: russianText('demo.relationships.love'), color: '#aabbcc' },
     ],
-    clubs: [
+    boards: [
       {
         id: 'story',
         name: russianText('samples.story'),
@@ -68,44 +63,44 @@ function fixture(): Database {
         connections: [],
       },
     ],
-    activeClubId: 'empty-story',
+    activeBoardId: 'empty-story',
   };
 }
 
 describe('portable JSON exports', () => {
-  it('imports previous story packages and emits only the current club fields', () => {
+  it('imports previous story packages and emits only the current board fields', () => {
     const file = createStoriesTransfer(fixture());
-    const { clubs, activeClubId, ...rest } = file.data;
+    const { boards, activeBoardId, ...rest } = file.data;
     const previous = {
       ...file,
-      data: { ...rest, version: 3, circles: clubs, activeCircleId: activeClubId },
+      data: { ...rest, version: 3, circles: boards, activeCircleId: activeBoardId },
     };
     expect(transferSchema.parse(previous)).toEqual(file);
     const merged = mergeTransfer(emptyDatabase(), previous);
     expect(merged.data).toEqual(file.data);
-    expect(merged.summary.clubs).toBe(2);
+    expect(merged.summary.boards).toBe(2);
     expect(JSON.stringify(merged.data)).not.toMatch(/"(?:circles|activeCircleId)"/);
   });
   it('exports a complete story with portraits, folders and used relations, omitting unrelated library entries', () => {
     const data = fixture();
     const file = createStoriesTransfer(data, ['story']);
     expect(file.kind).toBe('stories');
-    expect(file.data.clubs).toEqual([data.clubs[0]]);
+    expect(file.data.boards).toEqual([data.boards[0]]);
     expect(file.data.characters).toEqual(data.characters.slice(0, 2));
     expect(file.data.folders).toEqual([data.folders[0]]);
     expect(file.data.relationTypes).toEqual([data.relationTypes[0]]);
-    expect(file.data.activeClubId).toBe('story');
+    expect(file.data.activeBoardId).toBe('story');
     expect(transferSchema.parse(JSON.parse(JSON.stringify(file)))).toEqual(file);
     file.data.characters[0].name = russianText('samples.modified');
     expect(data.characters[0].name).toBe(russianText('samples.alice'));
   });
   it('exports all stories including empty ones and keeps each participant only once', () => {
     const data = fixture();
-    data.clubs.push({ ...structuredClone(data.clubs[0]), id: 'second' });
+    data.boards.push({ ...structuredClone(data.boards[0]), id: 'second' });
     const file = createStoriesTransfer(data);
-    expect(file.data.clubs).toEqual(data.clubs);
+    expect(file.data.boards).toEqual(data.boards);
     expect(file.data.characters).toHaveLength(2);
-    expect(file.data.activeClubId).toBe('empty-story');
+    expect(file.data.activeBoardId).toBe('empty-story');
     expect(createStoriesTransfer(emptyDatabase()).data).toEqual(emptyDatabase());
   });
   it('exports all characters, a folder, an empty folder, unfiled characters or one portrait without stories or relationships', () => {
@@ -114,9 +109,9 @@ describe('portable JSON exports', () => {
     const all = createCharactersTransfer(data);
     expect(all.data.characters).toEqual(data.characters);
     expect(all.data.folders).toEqual(data.folders);
-    expect(all.data.clubs).toEqual([]);
+    expect(all.data.boards).toEqual([]);
     expect(all.data.relationTypes).toEqual([]);
-    expect(all.data.activeClubId).toBeNull();
+    expect(all.data.activeBoardId).toBeNull();
     const folder = createCharactersTransfer(data, { folderId: 'family' });
     expect(folder.data.characters).toEqual([data.characters[0]]);
     expect(folder.data.folders).toEqual([data.folders[0]]);
@@ -150,7 +145,7 @@ describe('import adds to the existing library', () => {
       characters: 2,
       folders: 1,
       relationTypes: 1,
-      clubs: 2,
+      boards: 2,
       reused: 0,
     });
     const repeated = mergeTransfer(merged.data, file);
@@ -159,7 +154,7 @@ describe('import adds to the existing library', () => {
       characters: 0,
       folders: 0,
       relationTypes: 0,
-      clubs: 0,
+      boards: 0,
       reused: 6,
     });
   });
@@ -169,18 +164,18 @@ describe('import adds to the existing library', () => {
     local.folders[0].name = russianText('samples.localFamily');
     local.characters[0].name = russianText('samples.localAlice');
     local.relationTypes[0].color = '#654321';
-    local.clubs[0].name = russianText('samples.localStory');
+    local.boards[0].name = russianText('samples.localStory');
     const before = structuredClone(local);
     const packageBefore = structuredClone(file);
     const merged = mergeTransfer(local, file);
     expect(local).toEqual(before);
     expect(file).toEqual(packageBefore);
     expect(merged.data.characters.slice(0, 3)).toEqual(local.characters);
-    expect(merged.data.clubs.slice(0, 2)).toEqual(local.clubs);
+    expect(merged.data.boards.slice(0, 2)).toEqual(local.boards);
     expect(merged.data.folders.slice(0, 2)).toEqual(local.folders);
     expect(merged.data.relationTypes.slice(0, 2)).toEqual(local.relationTypes);
-    expect(merged.data.activeClubId).toBe(local.activeClubId);
-    const imported = merged.data.clubs.find((club) => club.name === russianText('samples.story'))!;
+    expect(merged.data.activeBoardId).toBe(local.activeBoardId);
+    const imported = merged.data.boards.find((board) => board.name === russianText('samples.story'))!;
     const alice = merged.data.characters.find(
       (character) => character.name === russianText('samples.alice'),
     )!;
@@ -189,7 +184,7 @@ describe('import adds to the existing library', () => {
     expect(imported.id).not.toBe('story');
     expect(imported.characterIds).toEqual(['bob', alice.id]);
     expect(imported.connections[0]).toEqual({
-      ...file.data.clubs[0].connections[0],
+      ...file.data.boards[0].connections[0],
       targetId: alice.id,
       typeId: fear.id,
     });
@@ -208,18 +203,18 @@ describe('import adds to the existing library', () => {
     file.data.folders[0].name = russianText('samples.familyLowercase');
     file.data.characters[0].folderId = 'new-folder';
     file.data.characters[0].id = 'new-alice';
-    file.data.clubs[0].characterIds[1] = 'new-alice';
-    file.data.clubs[0].connections[0].targetId = 'new-alice';
+    file.data.boards[0].characterIds[1] = 'new-alice';
+    file.data.boards[0].connections[0].targetId = 'new-alice';
     file.data.relationTypes[0].id = 'new-fear';
-    file.data.clubs[0].connections[0].typeId = 'new-fear';
+    file.data.boards[0].connections[0].typeId = 'new-fear';
     expect(mergeTransfer(local, file).data).toEqual(local);
   });
   it('keeps distinct identical characters and relation types distinct, including after repeated import', () => {
     const data = fixture();
     data.characters[1] = { ...data.characters[0], id: 'bob' };
     data.relationTypes[1] = { ...data.relationTypes[0], id: 'unused-type' };
-    data.clubs[0].connections.push({
-      ...data.clubs[0].connections[0],
+    data.boards[0].connections.push({
+      ...data.boards[0].connections[0],
       id: 'second-edge',
       typeId: 'unused-type',
     });
@@ -229,7 +224,7 @@ describe('import adds to the existing library', () => {
     local.folders = data.folders.slice(0, 1);
     const merged = mergeTransfer(local, file);
     expect(merged.data.characters).toHaveLength(2);
-    expect(new Set(merged.data.clubs[0].characterIds).size).toBe(2);
+    expect(new Set(merged.data.boards[0].characterIds).size).toBe(2);
     expect(merged.data.relationTypes).toHaveLength(2);
     expect(mergeTransfer(merged.data, file).data).toEqual(merged.data);
   });
@@ -237,7 +232,7 @@ describe('import adds to the existing library', () => {
     const data = fixture();
     const characters = mergeTransfer(emptyDatabase(), createCharactersTransfer(data)).data;
     expect(characters.characters).toEqual(data.characters);
-    expect(characters.clubs).toEqual([]);
+    expect(characters.boards).toEqual([]);
     expect(characters.relationTypes).toEqual([]);
     const relations = {
       format: 'trace-transfer',
