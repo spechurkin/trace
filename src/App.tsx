@@ -68,6 +68,7 @@ import {
   type NodeKind,
   retainMembers,
 } from '../shared/investigation';
+import { UpdateSettings, useUpdates } from './Updates';
 import { BranchForm } from './InvestigationForms';
 import { BoardInspector } from './BoardInspector';
 import { InvestigationCreator } from './InvestigationCreator';
@@ -113,6 +114,7 @@ export default function App() {
     document.title = tr('app.name');
   }, [locale]);
   const library = useLibrary();
+  const updateState = useUpdates();
   const { data, commit } = library;
   const [view, setView] = useState<View>('boards');
   const activeKind: NodeKind =
@@ -1177,6 +1179,7 @@ export default function App() {
 
         {view === 'settings' && (
           <section className="settings-page">
+            <UpdateSettings state={updateState} flush={library.flush} />
             <div className="settings-card compact">
               <h2>{tr('settings.language')}</h2>
               <label className="field">
@@ -1336,6 +1339,11 @@ export default function App() {
         )}
 
         <footer className="statusbar">
+          {updateState.status === 'ready' && (
+            <button className="button secondary" onClick={() => changeView('settings')}>
+              {tr('updates.readyNotice', updateState.version)}
+            </button>
+          )}
           <span className={`save-status ${library.status === 'error' ? 'error' : ''}`}>
             {library.status === 'saving' ? (
               <LoadingIcon size={12} className="spin" />

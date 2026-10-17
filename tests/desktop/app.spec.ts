@@ -1,16 +1,23 @@
-import { _electron as electron, type ElectronApplication, expect, type Page, test } from '@playwright/test';
-import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
+import {
+  _electron as electron,
+  type ElectronApplication,
+  expect,
+  type Page,
+  test,
+} from '@playwright/test';
+import { mkdir, mkdtemp, readdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { demoDatabase } from '../../src/demo';
 import { setLocale, tr } from '../../shared/i18n';
-import { type Database, databaseSchema, emptyDatabase } from '../../shared/model';
+import { databaseSchema, emptyDatabase } from '../../shared/model';
 import { createStoriesTransfer } from '../../shared/transfer';
 import { messages as creatorMessages } from '../../modules/investigation-creator/messages';
+import { emptyPlan } from '../../shared/legacy-investigation';
 
 let app: ElectronApplication, page: Page, directory: string;
 const root = process.cwd();
 
-async function launch(locale: 'en' | 'ru' = 'en', data?: Database) {
+async function launch(locale: 'en' | 'ru' = 'en', data?: unknown) {
   await mkdir(path.join(root, '.test-data'), { recursive: true });
   directory = await mkdtemp(path.join(root, '.test-data', 'trace-'));
   await writeFile(path.join(directory, 'preferences.json'), JSON.stringify({ language: locale }));
@@ -525,11 +532,56 @@ for (const [version, field] of [
     expect(saved).not.toHaveProperty('circles');
     expect(saved).not.toHaveProperty('activeClubId');
     expect(saved).not.toHaveProperty('activeCircleId');
-    expect(JSON.parse(await readFile(path.join(directory, 'library.json.bak'), 'utf8'))).toEqual(
-      legacy,
-    );
+    expect(
+      JSON.parse(
+        await readFile(
+          path.join(
+            directory,
+            (await readdir(directory)).find((file) => file.includes('.pre-migration-'))!,
+          ),
+          'utf8',
+        ),
+      ),
+    ).toEqual(legacy);
     await app.close();
     await reopen();
     expect(await persisted()).toEqual(current);
+  });
+}
+
+for (const version of [4, 5]) {
+  test(`opens version ${version} libraries automatically and retains investigation data after editing and reopening`, async () => {
+    setLocale('en');
+    const data = demoDatabase();
+    data.boards[0].investigation = emptyPlan();
+    data.boards[0].investigation.crime.motive = 'Retain this investigation material';
+    const { boards, activeBoardId, ...rest } = data;
+    const source =
+      version === 4 ? { ...rest, version: 4, clubs: boards, activeClubId: activeBoardId } : data;
+    await launch('en', source);
+    await expect(page.locator('.diagram-node')).toHaveCount(data.boards[0].characterIds.length + 1);
+    if (version === 4) {
+      const originals = (await readdir(directory)).filter((file) =>
+        file.includes('.pre-migration-'),
+      );
+      expect(originals).toHaveLength(1);
+      expect(JSON.parse(await readFile(path.join(directory, originals[0]), 'utf8'))).toEqual(
+        source,
+      );
+    }
+    await page.getByRole('button', { name: 'Board actions', exact: true }).click();
+    await page.getByRole('button', { name: 'Edit board', exact: true }).click();
+    await page.getByRole('dialog').getByLabel('Board name').fill('Migrated investigation');
+    await page
+      .getByRole('dialog')
+      .getByRole('button', { name: 'Save changes', exact: true })
+      .click();
+    const saved = await persisted();
+    expect(saved.version).toBe(5);
+    expect(saved.boards[0].investigation).toEqual(data.boards[0].investigation);
+    expect(saved).not.toHaveProperty('clubs');
+    await app.close();
+    await reopen();
+    expect((await persisted()).boards[0].investigation).toEqual(data.boards[0].investigation);
   });
 }

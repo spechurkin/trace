@@ -1,6 +1,6 @@
 import { russianText } from './russian-fixtures';
 import { afterEach, describe, expect, it } from 'vitest';
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
 import { Repository } from '../electron/repository';
@@ -48,7 +48,13 @@ describe('local filesystem persistence', () => {
       await writeFile(repo.file, JSON.stringify(legacy));
       const loaded = await repo.load();
       expect(loaded.data).toEqual(current);
-      expect(JSON.parse(await readFile(repo.file, 'utf8'))).toEqual(legacy);
+      expect(JSON.parse(await readFile(repo.file, 'utf8'))).toEqual(current);
+      const original = (await readdir(repo.directory)).find((file) =>
+        file.includes('.pre-migration-'),
+      )!;
+      expect(JSON.parse(await readFile(path.join(repo.directory, original), 'utf8'))).toEqual(
+        legacy,
+      );
       loaded.data.folders.push({
         id: 'family',
         name: russianText('demo.relationships.family'),
@@ -56,7 +62,9 @@ describe('local filesystem persistence', () => {
       });
       loaded.data.characters[0].folderId = 'family';
       await repo.save(loaded.data);
-      expect(JSON.parse(await readFile(repo.file + '.bak', 'utf8'))).toEqual(legacy);
+      expect(JSON.parse(await readFile(path.join(repo.directory, original), 'utf8'))).toEqual(
+        legacy,
+      );
       expect((await new Repository(repo.directory).load()).data).toEqual(loaded.data);
     },
   );

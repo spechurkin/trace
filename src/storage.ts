@@ -26,8 +26,26 @@ async function browserLoad(): Promise<LoadResult> {
       request.onsuccess = () => resolve(request.result);
       request.onerror = () => reject(request.error);
     });
+    const data = value === undefined ? emptyDatabase() : databaseSchema.parse(value);
+    if (
+      typeof value === 'object' &&
+      value !== null &&
+      'version' in value &&
+      value.version !== data.version
+    ) {
+      await new Promise<void>((resolve, reject) => {
+        const transaction = db.transaction('library', 'readwrite');
+        const store = transaction.objectStore('library');
+        store.put(value, `pre-migration-${crypto.randomUUID()}`);
+        store.put(data, 'data');
+        transaction.oncomplete = () => resolve();
+        transaction.onerror = () => reject(transaction.error);
+        transaction.onabort = () =>
+          reject(transaction.error || new Error(tr('errors.librarySave')));
+      });
+    }
     return {
-      data: value === undefined ? emptyDatabase() : databaseSchema.parse(value),
+      data,
       path: tr('data.browserLocation'),
     };
   } finally {
@@ -75,6 +93,17 @@ async function chooseJSON(): Promise<unknown | null> {
 }
 
 const browserAPI: DesktopAPI = {
+  getUpdateState: async () => ({ status: 'disabled', currentVersion: '', intervalDays: 1 }),
+  checkForUpdates: async () => ({ status: 'disabled', currentVersion: '', intervalDays: 1 }),
+  setUpdateInterval: async () => {
+  },
+  installUpdate: async () => {
+  },
+  openReleases: async () => {
+  },
+  onUpdateState: () => () => {
+  },
+
   getLanguage: async () => {
     const locale = localStorage.getItem('trace-language');
     return isLocale(locale) ? locale : 'en';

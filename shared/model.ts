@@ -257,6 +257,18 @@ export type LoadResult = { data: Database; path: string; warning?: string };
 export type ExportFormat = 'png' | 'svg';
 
 export interface DesktopAPI {
+  getUpdateState(): Promise<import('./updates').UpdateState>;
+
+  checkForUpdates(): Promise<import('./updates').UpdateState>;
+
+  setUpdateInterval(days: import('./updates').UpdateInterval): Promise<void>;
+
+  installUpdate(): Promise<void>;
+
+  openReleases(): Promise<void>;
+
+  onUpdateState(listener: (state: import('./updates').UpdateState) => void): () => void;
+
   getLanguage(): Promise<Locale>;
 
   setLanguage(locale: Locale): Promise<void>;
