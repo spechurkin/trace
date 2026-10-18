@@ -143,7 +143,14 @@ export default function Diagram({
           edge.sourceId !== selectedCharacter &&
           edge.targetId !== selectedCharacter;
         return (
-          <g key={edge.id} opacity={faded ? 0.13 : 1} className="diagram-edge">
+          <g
+            key={edge.id}
+            opacity={faded ? 0.13 : 1}
+            className="diagram-edge"
+            data-edge-id={edge.id}
+            data-source-id={edge.sourceId}
+            data-target-id={edge.targetId}
+          >
             <title>
               {edge.sourceId === CULPRIT
                 ? tr('trace.culprit')

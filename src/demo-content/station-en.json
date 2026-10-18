@@ -1,0 +1,155 @@
+{
+  "title": "Pumping station No. 6",
+  "description": "A journalist investigating local disappearances is found dead in an abandoned house. Police call it suicide, but the circumstances raise doubts.\nA phone book from his apartment, invoices at the newspaper office and a truck's navigation history independently point to pumping station No. 6, closed almost twenty years ago. A freight receipt, an editor's letter, truck photographs, a colleague's note and waybills connect the apartment, newsroom and garage through returning leads.\nBroken windows, rusty gates and overgrown approaches conceal fresh tyre marks, a running generator and a new door underground. Behind it are an equipped operating room, medical files and photographs of missing residents. The last operation is dated the day of the journalist's death; the staff list names the examiner who signed the suicide report.\nThe cause of death and any killer remain unestablished. The examiner's name warrants investigation; it does not prove murder.",
+  "unknown": "Not established by the source material; requires investigation.",
+  "observed": "Investigators found the object or record. Its interpretation and any person's involvement require separate verification.",
+  "follow": "Investigate “{0}” and follow the lead to “{1}”.",
+  "conclusions": [
+    "The investigation materials point to pumping station No. 6.",
+    "An operating room under the station is connected to missing residents.",
+    "The operations log names the examiner who signed the suicide report."
+  ],
+  "folders": {
+    "person": "People",
+    "evidence": "Findings",
+    "location": "Places",
+    "event": "Events"
+  },
+  "nodes": {
+    "abandoned": [
+      "Abandoned house",
+      "The house on the outskirts where the journalist's body was found. His apartment is a separate location.",
+      "The opening scene; the circumstances do not establish an unquestionable suicide."
+    ],
+    "discovery": [
+      "Discovery of the body",
+      "A journalist investigating local disappearances is found dead in an abandoned house. No exact date, time or mechanism of death is given.",
+      "Identify the deceased, examine the official report and find his investigation materials."
+    ],
+    "journalist": [
+      "Deceased journalist",
+      "Investigated several missing local residents. Found dead in an abandoned house; the official explanation is suicide.",
+      "His apartment and newsroom contain different parts of the investigation. The cause of death remains unestablished."
+    ],
+    "home": [
+      "Journalist's apartment",
+      "A phone book and freight receipt lie among scattered papers. A torn letter from the chief editor is in the wastebasket.",
+      "Connected to the newsroom and garage; the waybills return here as the truck's stopping place on the night of the death."
+    ],
+    "office": [
+      "Newspaper office",
+      "The journalist's workplace contains a draft article, invoices and a personal locker holding truck photographs and a colleague's note.",
+      "Sealed crates were delivered here; the chief editor demanded that the investigation stop."
+    ],
+    "garage": [
+      "Transport company garage",
+      "The suspected smugglers' truck is in the transport company's garage. Navigation records and waybills are available.",
+      "Examine the vehicle, documents and driver's account; connect deliveries to the apartment, newsroom and station."
+    ],
+    "phone": [
+      "Phone book",
+      "The heavily annotated book in the apartment has the long-closed pumping station's number underlined three times.",
+      "An independent lead to pumping station No. 6."
+    ],
+    "receipt": [
+      "Freight receipt",
+      "A transport company receipt for a shipment lies among the apartment's scattered papers. The contents are not specified.",
+      "Identify the company and investigate its garage. Do not invent the contents of the cargo."
+    ],
+    "editorLetter": [
+      "Torn editor's letter",
+      "A torn letter in the apartment's wastebasket demands that the journalist stop the investigation.",
+      "Investigate pressure on the journalist and visit the newspaper office; the letter does not establish involvement in his death."
+    ],
+    "article": [
+      "Draft article",
+      "The unpublished newsroom article concerns illegal supplies of medical equipment.",
+      "Compare it with the invoices and the station's contents."
+    ],
+    "invoices": [
+      "Invoices",
+      "Invoices attached to the article give the same station's address, described as a temporary warehouse.",
+      "A route to station No. 6 independent of the phone book."
+    ],
+    "truckPhoto": [
+      "Truck photographs",
+      "Photographs in the journalist's personal locker show a truck with a partially legible registration number.",
+      "Compare the vehicle and visible registration with the transport company's truck; a match requires verification."
+    ],
+    "colleagueNote": [
+      "Colleague's note",
+      "A locker note asks a colleague to collect the remaining investigation materials from the deceased's apartment.",
+      "A returning lead from the newsroom to materials that might have been missed in the apartment."
+    ],
+    "truck": [
+      "Transport company truck",
+      "The truck in the garage was used by suspected smugglers. It contains navigation records and trip documentation.",
+      "Compare the photographs, journey history and waybills."
+    ],
+    "driver": [
+      "Truck driver",
+      "Says he has never visited the abandoned station. The navigator records regular journeys by the vehicle.",
+      "Establish who drove on those nights. The contradiction does not prove this driver made the trips."
+    ],
+    "navigator": [
+      "Navigation history",
+      "The navigator retains regular nighttime journeys to the abandoned station.",
+      "The third independent route to station No. 6; investigate the contradiction with the driver's account."
+    ],
+    "waybills": [
+      "Waybills",
+      "They list the journalist's apartment, where the truck stopped on the night of his death, and the newsroom, which received sealed crates several days earlier. Cargo contents are not disclosed.",
+      "Two returning routes from the garage: revisit the apartment and newsroom and compare the stops and delivery with the findings."
+    ],
+    "station": [
+      "Pumping station No. 6",
+      "Closed almost twenty years ago. Broken windows, rusty gates and overgrown approaches make it look deserted.",
+      "The shared destination of the phone book, invoices and navigation history. Inside, evidence shows recent use."
+    ],
+    "tireTracks": [
+      "Fresh tyre marks",
+      "Fresh vehicle tyre marks are found inside the station.",
+      "The station was recently visited by a vehicle. No match with this truck has yet been established."
+    ],
+    "generator": [
+      "Running generator",
+      "A working generator supplies power to the apparently abandoned station.",
+      "Establishes current use despite the building's exterior."
+    ],
+    "undergroundDoor": [
+      "New underground door",
+      "A recently installed door inside the station leads underground.",
+      "The route from the station building to the concealed operating room."
+    ],
+    "operatingRoom": [
+      "Underground operating room",
+      "An equipped operating room lies behind the new door. Medical files, missing residents' photographs and an operations log are found nearby.",
+      "Investigate the documents and disappearances without treating a proposed crime as already proven."
+    ],
+    "medicalCards": [
+      "Medical files",
+      "Dozens of medical files are found underground.",
+      "Compare names and entries with missing residents; the results of that comparison are not supplied."
+    ],
+    "missingPhotos": [
+      "Missing residents' photographs",
+      "The operating room materials include photographs of missing local residents.",
+      "Connect the concealed facility to the subject of the journalist's investigation."
+    ],
+    "records": [
+      "Operations log",
+      "The last entry is dated the day of the journalist's death. The staff list names the examiner who signed the suicide report.",
+      "Compare the log and official report and investigate the examiner; the true cause of death is not yet proven."
+    ],
+    "autopsy": [
+      "Suicide report",
+      "The official document supporting the police's suicide conclusion bears the medical examiner's signature.",
+      "Compare the examiner's identity and signature with the underground log; the report's reliability requires investigation."
+    ],
+    "expert": [
+      "Medical examiner",
+      "Signed the journalist's suicide report. His name unexpectedly appears among the underground operating room's staff.",
+      "Investigate his involvement in the facility and the basis of his report. His role in the journalist's death is not established."
+    ]
+  }
+}

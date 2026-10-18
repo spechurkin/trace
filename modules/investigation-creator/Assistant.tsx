@@ -1,7 +1,17 @@
-import { type ReactNode, useMemo, useState } from 'react';
+import { type ReactNode, useEffect, useEffectEvent, useId, useMemo, useRef, useState } from 'react';
 import { creatorSchema, emptyPlan, type InvestigationPlan } from './schema';
+import { buildInvestigationDiagram, DiagramPlacementError } from './diagram';
+import type { InvestigationDiagram } from './contracts';
+import {
+  canFillCrimeRole,
+  type CrimeRole,
+  type InvestigationBoard,
+  type InvestigationNode,
+  kindOf,
+  type NodeKind,
+} from './contracts';
 import { type AuditGroup, auditInvestigation, suggestVersions } from './engine';
-import { type InvestigationBoard, type InvestigationNode, kindOf, type NodeKind } from './contracts';
+import { reconcileCrimeRoles } from './crime-roles';
 import { type CreatorLocale, type CreatorMessage, messages } from './messages';
 import './assistant.css';
 
@@ -39,11 +49,13 @@ export function parseTime(value: string): number | null {
 }
 
 function Clock({
+                 id,
                  value,
                  onChange,
                  t,
                }: {
   value: number;
+  id: string;
   onChange: (v: number) => void;
   t: Translator;
 }) {
@@ -52,6 +64,7 @@ function Clock({
   return (
     <>
       <input
+        id={id}
         value={input}
         aria-invalid={!valid}
         onChange={(e) => {
@@ -79,11 +92,13 @@ function Fields({
   onChange: (key: string, value: unknown) => void;
   t: Translator;
 }) {
+  const fieldId = useId();
   return (
     <div className="ic-fields">
       {specs.map((spec) => {
         const value = row[spec.key],
-          options = spec.options || [];
+          options = spec.options || [],
+          id = `${fieldId}-${spec.key}`;
         if (spec.type === 'multi')
           return (
             <fieldset key={spec.key} className="ic-field ic-choices">
@@ -129,16 +144,20 @@ function Fields({
             </fieldset>
           );
         return (
-          <label className="ic-field" key={spec.key}>
-            <span>{t(spec.label)}</span>
+          <fieldset className="ic-field" key={spec.key}>
+            <legend>
+              <label htmlFor={id}>{t(spec.label)}</label>
+            </legend>
             {spec.type === 'check' ? (
               <input
+                id={id}
                 type="checkbox"
                 checked={!!value}
                 onChange={(e) => onChange(spec.key, e.target.checked)}
               />
             ) : spec.type === 'select' ? (
               <select
+                id={id}
                 value={String(value ?? '')}
                 onChange={(e) =>
                   onChange(
@@ -164,9 +183,15 @@ function Fields({
                 ) : null}
               </select>
             ) : spec.type === 'clock' ? (
-              <Clock value={value as number} onChange={(v) => onChange(spec.key, v)} t={t} />
+              <Clock
+                id={id}
+                value={value as number}
+                onChange={(v) => onChange(spec.key, v)}
+                t={t}
+              />
             ) : spec.type === 'number' || spec.type === 'nullableNumber' ? (
               <input
+                id={id}
                 type="number"
                 value={(value as number) ?? ''}
                 onChange={(e) =>
@@ -182,6 +207,7 @@ function Fields({
               />
             ) : (
               <textarea
+                id={id}
                 aria-label={t(spec.label)}
                 rows={2}
                 maxLength={spec.key === 'period' ? 80 : 2000}
@@ -189,7 +215,7 @@ function Fields({
                 onChange={(e) => onChange(spec.key, e.target.value)}
               />
             )}
-          </label>
+          </fieldset>
         );
       })}
     </div>
@@ -271,10 +297,16 @@ function Collection({
 export interface AssistantProps<T extends InvestigationNode> {
   board: InvestigationBoard;
   nodes: T[];
+  sourceNodes?: T[];
   locale: CreatorLocale;
   initialStep?: AuditGroup;
   mode?: 'create' | 'audit';
-  onSave: (plan: InvestigationPlan, nodes: T[], close: boolean) => void;
+  onSave: (
+    plan: InvestigationPlan,
+    nodes: T[],
+    close: boolean,
+    diagram?: InvestigationDiagram,
+  ) => void;
   onClose: () => void;
   renderNodeEditor?: (
     node: T | undefined,
@@ -287,6 +319,7 @@ export interface AssistantProps<T extends InvestigationNode> {
 export function InvestigationAssistant<T extends InvestigationNode>({
                                                                       board,
                                                                       nodes: initialNodes,
+                                                                      sourceNodes,
                                                                       locale,
                                                                       initialStep = 'crime',
                                                                       mode = 'create',
@@ -296,12 +329,18 @@ export function InvestigationAssistant<T extends InvestigationNode>({
                                                                     }: AssistantProps<T>) {
   const t = messages(locale);
   const [step, setStep] = useState(steps.indexOf(initialStep));
-  const [plan, setPlan] = useState(() => structuredClone(board.investigation || emptyPlan()));
+  const [plan, setPlan] = useState(() =>
+    reconcileCrimeRoles(
+      structuredClone(board.investigation || emptyPlan()),
+      initialNodes.filter((n) => board.characterIds.includes(n.id)),
+    ),
+  );
   const [nodes, setNodes] = useState(() =>
     initialNodes.filter((n) => board.characterIds.includes(n.id)),
   );
   const [editing, setEditing] = useState<{ node?: T; kind: NodeKind; locationId?: string }>();
   const [error, setError] = useState('');
+  const [replaceManual, setReplaceManual] = useState(false);
   const report = useMemo(
     () => auditInvestigation({ characterIds: nodes.map((n) => n.id), investigation: plan }, nodes),
     [plan, nodes],
@@ -325,6 +364,14 @@ export function InvestigationAssistant<T extends InvestigationNode>({
     type: multi ? 'multi' : 'select',
     options: options(kind),
   });
+  const crimeRoleSpec = (role: CrimeRole): Spec => ({
+    key: role,
+    label: role,
+    type: role === 'culpritIds' ? 'multi' : 'select',
+    options: nodes
+      .filter((node) => canFillCrimeRole(node, role))
+      .map((node) => ({ id: node.id, name: node.name })),
+  });
   const enumSpec = (key: string, label: CreatorMessage, ...keys: CreatorMessage[]): Spec => ({
     key,
     label,
@@ -333,12 +380,12 @@ export function InvestigationAssistant<T extends InvestigationNode>({
   });
   const patch = <K extends keyof InvestigationPlan>(key: K, value: InvestigationPlan[K]) =>
     setPlan((p) => ({ ...p, [key]: value }));
-  const save = (close = false) => {
+  const save = (close = false, assemble = false) => {
     if (document.querySelector('.investigation-assistant [aria-invalid="true"]')) {
       setError(t('timeError'));
       return false;
     }
-    const parsed = creatorSchema.safeParse(plan);
+    const parsed = creatorSchema.safeParse(reconcileCrimeRoles(plan, nodes));
     if (!parsed.success) {
       setError(
         `${t('saveError')} ${parsed.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join('; ')}`,
@@ -346,14 +393,55 @@ export function InvestigationAssistant<T extends InvestigationNode>({
       return false;
     }
     try {
-      onSave(parsed.data, nodes, close);
+      const diagram = assemble
+        ? buildInvestigationDiagram(parsed.data, nodes, board.diagram, {
+          replaceManual,
+          bounds: board.diagramBounds,
+          footprints: board.diagramFootprints?.(nodes),
+        })
+        : undefined;
+      onSave(parsed.data, nodes, close, diagram);
       setError('');
       return true;
     } catch (e) {
-      setError(e instanceof Error ? e.message : t('saveError'));
+      setError(
+        e instanceof DiagramPlacementError
+          ? t('diagramSpaceError')
+          : e instanceof Error
+            ? e.message
+            : t('saveError'),
+      );
       return false;
     }
   };
+  const lastDraft = useRef({ plan, nodes });
+  const autoSave = useEffectEvent(() => save());
+  const includeSources = useEffectEvent(() => {
+    const existing = new Set(nodes.map((node) => node.id));
+    const additions = (sourceNodes || []).filter((node) => {
+      if (existing.has(node.id)) return false;
+      existing.add(node.id);
+      return true;
+    });
+    if (nodes.length + additions.length > 500) {
+      setError(t('sourceLimit'));
+      return;
+    }
+    setError((previous) => (previous === t('sourceLimit') ? '' : previous));
+    if (!additions.length) return;
+    const next = [...nodes, ...additions];
+    setNodes(next);
+    setPlan((previous) => reconcileCrimeRoles(previous, next));
+  });
+  useEffect(() => {
+    includeSources();
+  }, [sourceNodes]);
+  useEffect(() => {
+    // Only draft edits trigger saving; host save-status updates must not start another save.
+    if (lastDraft.current.plan === plan && lastDraft.current.nodes === nodes) return;
+    lastDraft.current = { plan, nodes };
+    autoSave();
+  }, [plan, nodes]);
   const collection = <
     K extends 'conclusions' | 'evidence' | 'access' | 'timeline' | 'ordering' | 'travel' | 'versions',
   >(
@@ -406,23 +494,25 @@ export function InvestigationAssistant<T extends InvestigationNode>({
                     : t('recommendations')}
               </strong>
               <p>{t(`issue_${issue.code}` as CreatorMessage, ...issue.args)}</p>
-              <button
-                type="button"
-                onClick={() =>
-                  setStep(steps.indexOf(issue.code === 'threeClues' ? 'matrix' : issue.group))
-                }
-              >
-                {t('edit')} · {t(issue.code === 'threeClues' ? 'matrix' : issue.group)}
-              </button>
-              {issue.code === 'threeClues' && renderNodeEditor && (
+              <div className="ic-issue-actions">
                 <button
                   type="button"
-                  disabled={nodes.length >= 500}
-                  onClick={() => setEditing({ kind: 'evidence', locationId: issue.ids[0] })}
+                  onClick={() =>
+                    setStep(steps.indexOf(issue.code === 'threeClues' ? 'matrix' : issue.group))
+                  }
                 >
-                  {t('newNode')} · {t('evidenceNode')}
+                  {t('edit')} · {t(issue.code === 'threeClues' ? 'matrix' : issue.group)}
                 </button>
-              )}
+                {issue.code === 'threeClues' && renderNodeEditor && (
+                  <button
+                    type="button"
+                    disabled={nodes.length >= 500}
+                    onClick={() => setEditing({ kind: 'evidence', locationId: issue.ids[0] })}
+                  >
+                    {t('newNode')} · {t('evidenceNode')}
+                  </button>
+                )}
+              </div>
             </li>
           ))}
         </ul>
@@ -439,11 +529,11 @@ export function InvestigationAssistant<T extends InvestigationNode>({
           editing.node,
           editing.kind,
           (node) => {
-            setNodes((previous) =>
-              previous.some((n) => n.id === node.id)
-                ? previous.map((n) => (n.id === node.id ? node : n))
-                : [...previous, node],
-            );
+            const nextNodes = nodes.some((n) => n.id === node.id)
+              ? nodes.map((n) => (n.id === node.id ? node : n))
+              : [...nodes, node];
+            setNodes(nextNodes);
+            setPlan((previous) => reconcileCrimeRoles(previous, nextNodes));
             if (editing.locationId)
               setPlan((previous) => ({
                 ...previous,
@@ -500,23 +590,6 @@ export function InvestigationAssistant<T extends InvestigationNode>({
       </h2>
       <p className="ic-guidance">{t(`${active}Hint`)}</p>
       {mode === 'audit' && active === 'completeness' && reportView}
-      {active === 'crime' && (
-        <>
-          <Fields
-            t={t}
-            row={plan.crime}
-            specs={[
-              nodeSpec('eventId', 'eventId', 'event'),
-              nodeSpec('victimId', 'victimId', 'person'),
-              nodeSpec('culpritIds', 'culpritIds', 'person', true),
-              { key: 'motive', label: 'motive' },
-              { key: 'method', label: 'method' },
-              { key: 'circumstances', label: 'circumstances' },
-            ]}
-            onChange={(key, value) => patch('crime', { ...plan.crime, [key]: value })}
-          />
-        </>
-      )}
       {(active === 'crime' ||
           active === 'matrix' ||
           active === 'timeline' ||
@@ -554,6 +627,23 @@ export function InvestigationAssistant<T extends InvestigationNode>({
             </details>
           </section>
         )}
+      {active === 'crime' && (
+        <>
+          <Fields
+            t={t}
+            row={plan.crime}
+            specs={[
+              nodeSpec('eventId', 'eventId', 'event'),
+              crimeRoleSpec('victimId'),
+              crimeRoleSpec('culpritIds'),
+              { key: 'motive', label: 'motive' },
+              { key: 'method', label: 'method' },
+              { key: 'circumstances', label: 'circumstances' },
+            ]}
+            onChange={(key, value) => patch('crime', { ...plan.crime, [key]: value })}
+          />
+        </>
+      )}
       {active === 'matrix' && (
         <>
           <p className="ic-guidance">{t('clueAdvice')}</p>
@@ -878,6 +968,22 @@ export function InvestigationAssistant<T extends InvestigationNode>({
         <button type="button" onClick={() => save()}>
           {t('save')}
         </button>
+        <button
+          type="button"
+          className="ic-primary"
+          title={t('assembleHint')}
+          onClick={() => save(true, true)}
+        >
+          {t('assemble')}
+        </button>
+        <label title={t('assemblePreservation')}>
+          <input
+            type="checkbox"
+            checked={replaceManual}
+            onChange={(event) => setReplaceManual(event.target.checked)}
+          />{' '}
+          {t('replaceManual')}
+        </label>
         {mode === 'create' && (
           <button
             type="button"

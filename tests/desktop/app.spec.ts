@@ -1,10 +1,4 @@
-import {
-  _electron as electron,
-  type ElectronApplication,
-  expect,
-  type Page,
-  test,
-} from '@playwright/test';
+import { _electron as electron, type ElectronApplication, expect, type Page, test } from '@playwright/test';
 import { mkdir, mkdtemp, readdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { demoDatabase } from '../../src/demo';
@@ -13,6 +7,8 @@ import { databaseSchema, emptyDatabase } from '../../shared/model';
 import { createStoriesTransfer } from '../../shared/transfer';
 import { messages as creatorMessages } from '../../modules/investigation-creator/messages';
 import { emptyPlan } from '../../shared/legacy-investigation';
+import { convergingInvestigation, convergingNames } from '../fixtures/converging';
+import { parentsOf } from '../../shared/investigation';
 
 let app: ElectronApplication, page: Page, directory: string;
 const root = process.cwd();
@@ -395,7 +391,18 @@ test('branch editing updates the tree and automatic colors, then changing roles 
   await page.locator('[data-node-id="door"]').click();
   await page.locator('.inspector').getByRole('button', { name: 'Connect', exact: true }).click();
   const dialog = page.getByRole('dialog');
-  await dialog.getByLabel('Attach to', { exact: false }).selectOption('celine');
+  await dialog
+    .getByRole('checkbox', {
+      name: demoDatabase().characters.find((n) => n.id === 'apartment')!.name,
+      exact: true,
+    })
+    .uncheck();
+  await dialog
+    .getByRole('checkbox', {
+      name: demoDatabase().characters.find((n) => n.id === 'celine')!.name,
+      exact: true,
+    })
+    .check();
   await dialog.getByRole('button', { name: 'Connect', exact: true }).click();
   expect((await persisted()).boards[0].layout!.door.parentId).toBe('celine');
   await page.locator('[data-node-id="domye"]').click();
@@ -405,8 +412,78 @@ test('branch editing updates the tree and automatic colors, then changing roles 
   await persisted();
   await expect(
     page.locator('.diagram-edge').filter({ has: page.locator('path[stroke="#4C9A2A"]') }),
-  ).toHaveCount(4);
+  ).toHaveCount(3);
+  await expect(
+    page.locator('.diagram-edge').filter({ has: page.locator('path[stroke="#64748B"]') }),
+  ).toHaveCount(2);
 });
+
+for (const locale of ['en', 'ru'] as const) {
+  test(`three clues converge on one station through assembly, editing and restart in ${locale}`, async () => {
+    setLocale(locale);
+    const data = convergingInvestigation(),
+      t = creatorMessages(locale);
+    await launch(locale, data);
+    await page.locator('[data-node-id="__culprit__"]').click();
+    const mode = page.locator('.investigation-creator-mode');
+    await mode
+      .locator('footer')
+      .getByRole('button', { name: t('assemble'), exact: true })
+      .click();
+    await expect(mode).toHaveCount(0);
+    await expect(page.locator('[data-node-id="station"]')).toHaveCount(1);
+    const incoming = () =>
+      page.locator('.diagram-edge title').filter({ hasText: `→ ${convergingNames.station}:` });
+    await expect(incoming()).toHaveCount(3);
+    expect(parentsOf((await persisted()).boards[0], 'station').sort()).toEqual([
+      'invoices',
+      'navigator',
+      'phone',
+    ]);
+    await page.screenshot({ path: `test-results/converging-station-${locale}.png` });
+    await page.locator('[data-node-id="station"]').press('Enter');
+    await page
+      .locator('.inspector')
+      .getByRole('button', { name: tr('actions.connect'), exact: true })
+      .click();
+    let dialog = page.getByRole('dialog');
+    await expect(
+      dialog.getByRole('checkbox', { name: convergingNames.station, exact: true }),
+    ).toHaveCount(0);
+    await expect(
+      dialog.getByRole('checkbox', { name: convergingNames.records, exact: true }),
+    ).toHaveCount(1);
+    await dialog.getByRole('checkbox', { name: convergingNames.invoices, exact: true }).uncheck();
+    await dialog
+      .getByRole('textbox', { name: tr('members.searchLabel'), exact: true })
+      .fill(convergingNames.phone.slice(0, 4));
+    await expect(
+      dialog.getByRole('checkbox', { name: convergingNames.phone, exact: true }),
+    ).toBeChecked();
+    await dialog.getByRole('button', { name: tr('actions.connect'), exact: true }).click();
+    await expect(incoming()).toHaveCount(2);
+    expect(parentsOf((await persisted()).boards[0], 'station').sort()).toEqual([
+      'navigator',
+      'phone',
+    ]);
+    await app.close();
+    await reopen();
+    await expect(incoming()).toHaveCount(2);
+    await page.locator('[data-node-id="station"]').press('Enter');
+    await page
+      .locator('.inspector')
+      .getByRole('button', { name: tr('actions.connect'), exact: true })
+      .click();
+    dialog = page.getByRole('dialog');
+    await expect(
+      dialog.getByRole('checkbox', { name: convergingNames.navigator, exact: true }),
+    ).toBeChecked();
+    await dialog.getByRole('checkbox', { name: convergingNames.invoices, exact: true }).check();
+    await dialog.getByRole('button', { name: tr('actions.connect'), exact: true }).click();
+    await expect(incoming()).toHaveCount(3);
+    expect(parentsOf((await persisted()).boards[0], 'station')).toHaveLength(3);
+  });
+}
 
 test('localized tabs, role filters, screenshots and SVG/PNG exports work in Electron', async () => {
   setLocale('en');

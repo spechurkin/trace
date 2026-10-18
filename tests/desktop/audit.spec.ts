@@ -210,7 +210,9 @@ test('linking two nodes cannot create a cycle and removal reconnects children', 
     .getByRole('button', { name: tr('actions.connect'), exact: true })
     .click();
   const dialog = page.getByRole('dialog');
-  await expect(dialog.getByLabel(tr('trace.parent')).locator('option')).toHaveCount(1);
+  await expect(
+    dialog.getByRole('group', { name: tr('trace.parent') }).getByRole('checkbox'),
+  ).toHaveCount(3);
   await page.keyboard.press('Escape');
   await page.locator('[data-node-id=n0]').press('Enter');
   await page

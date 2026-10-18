@@ -8,10 +8,35 @@ import {
   retainMembers,
   setParent,
 } from '../shared/investigation';
-import { databaseSchema, deleteCharacter, emptyDatabase, removeFromBoard } from '../shared/model';
+import { characterSchema, databaseSchema, deleteCharacter, emptyDatabase, removeFromBoard } from '../shared/model';
 import { demoDatabase } from '../src/demo';
 import { boardBounds, boardPositions, CENTER, edgeGeometry } from '../src/geometry';
-import { createStoriesTransfer, mergeTransfer } from '../shared/transfer';
+import { createCharactersTransfer, createStoriesTransfer, mergeTransfer } from '../shared/transfer';
+
+it('saves victim-only people, colors their branches and keeps the role distinct during import', () => {
+  const node = characterSchema.parse({
+    id: 'victim',
+    name: 'Victim',
+    kind: 'person',
+    color: BRANCH_COLORS.victim,
+    notes: '',
+    folderId: null,
+    suspect: false,
+    witness: false,
+    victim: true,
+  });
+  expect(branchOf(node)).toBe('victim');
+  expect(branchOf({ ...node, suspect: true })).toBe('victim');
+  expect(characterSchema.safeParse({ ...node, victim: false }).success).toBe(false);
+  const data = { ...emptyDatabase(), characters: [node] };
+  const file = createCharactersTransfer(data);
+  expect(mergeTransfer(emptyDatabase(), file).data.characters).toEqual([node]);
+  const existing = { ...data, characters: [{ ...node, witness: true, victim: false }] };
+  const incoming = createCharactersTransfer({ ...data, characters: [{ ...node, witness: true }] });
+  const imported = mergeTransfer(existing, incoming).data.characters;
+  expect(imported).toHaveLength(2);
+  expect(imported.find((n) => n.victim)?.id).not.toBe(node.id);
+});
 
 it('colors each branch by its child, including evidence below a suspect and a location below evidence', () => {
   const data = demoDatabase(),
@@ -33,13 +58,15 @@ it('colors each branch by its child, including evidence below a suspect and a lo
   expect(branchOf({ ...data.characters[0], suspect: false })).toBe('witness');
   expect(edges).toHaveLength(board.characterIds.length);
 });
-it('prevents cycles, self-parenting and parents outside the board before saving or importing', () => {
+it('allows returning leads while preventing self-links, absent nodes and cyclic placement anchors', () => {
   const data = demoDatabase(),
     board = data.boards[0];
-  expect(canParent(board, 'domye', 'apartment')).toBe(false);
+  expect(canParent(board, 'domye', 'apartment')).toBe(true);
   expect(canParent(board, 'domye', 'domye')).toBe(false);
   expect(canParent(board, 'domye', 'missing')).toBe(false);
-  expect(() => setParent(board, 'domye', 'apartment')).toThrow();
+  expect(
+    databaseSchema.safeParse({ ...data, boards: [setParent(board, 'domye', 'apartment')] }).success,
+  ).toBe(true);
   expect(setParent(board, 'pressure', 'celine').layout?.pressure.parentId).toBe('celine');
   board.layout!.domye.parentId = 'apartment';
   expect(databaseSchema.safeParse(data).success).toBe(false);

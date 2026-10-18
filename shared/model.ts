@@ -4,6 +4,7 @@ import { z } from 'zod';
 import type { TransferImportResult, TransferPackage } from './transfer';
 import { folderKindOf, folderSubtree, migrateFolderCategories } from './folders';
 import { creatorSchema } from '../modules/investigation-creator/schema';
+import { retainParents } from './investigation';
 
 // Keep older libraries readable; this limit applies to adding new boards.
 export const BOARD_CREATION_LIMIT = 100;
@@ -45,12 +46,16 @@ export const characterSchema = z
     kind: z.enum(['person', 'evidence', 'location', 'event']).optional(),
     witness: z.boolean().optional(),
     suspect: z.boolean().optional(),
+    victim: z.boolean().optional(),
     answers: z.record(z.string(), z.string().max(2000)).optional(),
   })
   .strict()
   .refine(
     (node) =>
-      (node.kind && node.kind !== 'person') || node.suspect !== false || node.witness === true,
+      (node.kind && node.kind !== 'person') ||
+      node.suspect !== false ||
+      node.witness === true ||
+      node.victim === true,
     { error: () => tr('trace.rolesRequired') },
   );
 export const characterFolderSchema = z
@@ -80,6 +85,7 @@ export const boardSchema = z
     characterIds: z.array(id).max(500),
     connections: z.array(connectionSchema).max(10000),
     investigation: creatorSchema.optional(),
+    creatorFolderIds: z.array(id).max(500).optional(),
     layout: z
       .record(
         id,
@@ -89,6 +95,20 @@ export const boardSchema = z
             y: z.number().finite().min(-10000).max(10000).optional(),
             locked: z.boolean().optional(),
             parentId: id.optional(),
+            parentIds: z.array(id).min(1).max(501).optional(),
+            generated: z
+              .object({
+                layoutVersion: z
+                  .enum(['compact-v1', 'compact-v2', 'compact-v3', 'compact-v4'])
+                  .optional(),
+                layoutKey: z.string().max(16).optional(),
+                parentId: id,
+                parentIds: z.array(id).min(1).max(501).optional(),
+                x: z.number().finite().min(-10000).max(10000),
+                y: z.number().finite().min(-10000).max(10000),
+              })
+              .strict()
+              .optional(),
           })
           .strict()
           .refine((entry) => (entry.x === undefined) === (entry.y === undefined), {
@@ -173,24 +193,43 @@ const currentDatabaseSchema = z
         issue(tr('validation.boardMembersInvalid'));
       if (!unique(board.connections.map((c) => c.id))) issue(tr('validation.duplicateConnections'));
       for (const [nodeId, placement] of Object.entries(board.layout || {})) {
+        for (const entry of [placement, placement.generated]) {
+          if (
+            entry?.parentIds &&
+            (!unique(entry.parentIds) ||
+              !entry.parentId ||
+              (entry.parentId !== '__culprit__' && !entry.parentIds.includes(entry.parentId)) ||
+              entry.parentIds.includes(nodeId) ||
+              entry.parentIds.some((parent) => parent !== '__culprit__' && !members.has(parent)))
+          )
+            issue(tr('trace.invalidTree'));
+        }
         if (
           !members.has(nodeId) ||
           (placement.parentId &&
             placement.parentId !== '__culprit__' &&
-            !members.has(placement.parentId))
+            !members.has(placement.parentId)) ||
+          (placement.generated &&
+            placement.generated.parentId !== '__culprit__' &&
+            !members.has(placement.generated.parentId))
         )
           issue(tr('trace.invalidTree'));
-        const visited = new Set([nodeId]);
-        let parent = placement.parentId;
-        while (parent && parent !== '__culprit__') {
-          if (visited.has(parent)) {
-            issue(tr('trace.invalidTree'));
-            break;
-          }
-          visited.add(parent);
-          parent = board.layout?.[parent]?.parentId;
-        }
       }
+      // Backward discovery paths may form cycles. Only placement anchors form
+      // a tree; they never remove or add visible discovery paths.
+      const visiting = new Set<string>(),
+        visited = new Set<string>();
+      const visit = (nodeId: string): boolean => {
+        if (nodeId === '__culprit__' || visited.has(nodeId)) return true;
+        if (visiting.has(nodeId)) return false;
+        visiting.add(nodeId);
+        const anchor = board.layout?.[nodeId]?.parentId ?? '__culprit__';
+        if (!visit(anchor)) return false;
+        visiting.delete(nodeId);
+        visited.add(nodeId);
+        return true;
+      };
+      if (board.characterIds.some((nodeId) => !visit(nodeId))) issue(tr('trace.invalidTree'));
       const signatures = new Set<string>();
       for (const connection of board.connections) {
         if (
@@ -321,6 +360,11 @@ export function deleteCharacterFolder(data: Database, folderId: string): Databas
   return {
     ...data,
     folders: data.folders.filter((folder) => !removed.has(folder.id)),
+    boards: data.boards.map((board) =>
+      board.creatorFolderIds
+        ? { ...board, creatorFolderIds: board.creatorFolderIds.filter((id) => !removed.has(id)) }
+        : board,
+    ),
     characters: data.characters.map((character) =>
       character.folderId !== null && removed.has(character.folderId)
         ? { ...character, folderId: folder.parentId }
@@ -338,6 +382,7 @@ export function deleteCharacter(data: Database, characterId: string): Database {
 }
 
 export function removeFromBoard(board: Board, characterId: string): Board {
+  const members = new Set(board.characterIds.filter((id) => id !== characterId));
   return {
     ...board,
     characterIds: board.characterIds.filter((id) => id !== characterId),
@@ -349,10 +394,7 @@ export function removeFromBoard(board: Board, characterId: string): Board {
           layout: Object.fromEntries(
             Object.entries(board.layout)
               .filter(([id]) => id !== characterId)
-              .map(([id, value]) => [
-                id,
-                value.parentId === characterId ? { ...value, parentId: '__culprit__' } : value,
-              ]),
+              .map(([id, value]) => [id, retainParents(value, members)]),
           ),
         }
       : {}),

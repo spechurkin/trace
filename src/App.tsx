@@ -50,6 +50,7 @@ import {
   createCharactersTransfer,
   createStoriesTransfer,
   describeImport,
+  mergeTransfer,
   type TransferPackage,
 } from '../shared/transfer';
 import { folderKindOf, folderPath, folderSubtree } from '../shared/folders';
@@ -58,6 +59,7 @@ import { BoardForm, CharacterForm, FolderForm, ParticipantsForm } from './forms'
 import CharacterLibrary from './CharacterLibrary';
 import Diagram from './Diagram';
 import { demoDatabase } from './demo';
+import { stationDatabase } from './station-demo';
 import { storage } from './storage';
 import { useLibrary } from './useLibrary';
 import {
@@ -72,6 +74,7 @@ import { UpdateSettings, useUpdates } from './Updates';
 import { BranchForm } from './InvestigationForms';
 import { BoardInspector } from './BoardInspector';
 import { InvestigationCreator } from './InvestigationCreator';
+import { applyCreatorDiagram } from './creator-diagram';
 import { messages as creatorMessages } from '../modules/investigation-creator/messages';
 
 type View = 'boards' | 'characters' | 'evidence' | 'locations' | 'events' | 'settings';
@@ -251,8 +254,28 @@ export default function App() {
     setBoardMenu(false);
   };
   const libraryView = ['characters', 'evidence', 'locations', 'events'].includes(view);
-  const [roleFilter, setRoleFilter] = useState<'all' | 'witness' | 'suspect'>('all');
+  const [roleFilter, setRoleFilter] = useState<'all' | 'witness' | 'suspect' | 'victim'>('all');
   const newCharacter = () => setEditor({ kind: 'character', nodeKind: activeKind });
+  const addStationExample = () => {
+    try {
+      const example = stationDatabase();
+      commit((current) => {
+        const before = new Set(current.boards.map((b) => b.id));
+        const merged = mergeTransfer(current, createStoriesTransfer(example)).data;
+        const added =
+          merged.boards.find((b) => !before.has(b.id)) ??
+          merged.boards.find(
+            (b) =>
+              b.name === example.boards[0].name && b.description === example.boards[0].description,
+          );
+        return { ...merged, activeBoardId: added?.id ?? merged.activeBoardId };
+      });
+      setBoardMenu(false);
+      notify(tr('notifications.exampleAdded'));
+    } catch (error) {
+      notify(error instanceof Error ? error.message : String(error));
+    }
+  };
   const newFolder = () =>
     setEditor({
       kind: 'folder',
@@ -697,6 +720,13 @@ export default function App() {
                         <Trash2 size={15} />
                         {tr('boards.delete')}
                       </button>
+                      <button
+                        disabled={data.boards.length >= BOARD_CREATION_LIMIT}
+                        onClick={addStationExample}
+                      >
+                        <Sparkles size={15} />
+                        {tr('demo.stationExample')}
+                      </button>
                     </div>
                   )}
                 </div>
@@ -938,7 +968,10 @@ export default function App() {
                         hiddenTypes={hiddenTypes}
                         showLabels={labels}
                         onCharacter={pickCharacter}
-                        onEdge={(id) => pickCharacter(id.replace(/^branch-/, ''))}
+                        onEdge={(id) => {
+                          const edge = connections.find((edge) => edge.id === id);
+                          if (edge) pickCharacter(edge.targetId);
+                        }}
                         onBackground={() => {
                           if (!linking) clearSelection();
                         }}
@@ -1008,16 +1041,22 @@ export default function App() {
                     {board ? tr('characters.add') : tr('boards.createFirst')}
                   </button>
                   {!board && !data.characters.length && (
-                    <button
-                      className="text-button demo-button"
-                      onClick={() => {
-                        commit(() => demoDatabase());
-                        notify(tr('notifications.exampleAdded'));
-                      }}
-                    >
-                      <Sparkles size={15} />
-                      {tr('demo.explore')}
-                    </button>
+                    <>
+                      <button
+                        className="text-button demo-button"
+                        onClick={() => {
+                          commit(() => demoDatabase());
+                          notify(tr('notifications.exampleAdded'));
+                        }}
+                      >
+                        <Sparkles size={15} />
+                        {tr('demo.explore')}
+                      </button>
+                      <button className="text-button demo-button" onClick={addStationExample}>
+                        <Sparkles size={15} />
+                        {tr('demo.stationExample')}
+                      </button>
+                    </>
                   )}
                   {!board && (
                     <button
@@ -1095,7 +1134,15 @@ export default function App() {
             locale={locale}
             audit={creator === 'audit'}
             onClose={closeCreator}
-            onSave={(plan, members, close) => {
+            onFoldersChange={(creatorFolderIds) =>
+              commit((current) => ({
+                ...current,
+                boards: current.boards.map((item) =>
+                  item.id === board.id ? { ...item, creatorFolderIds } : item,
+                ),
+              }))
+            }
+            onSave={(plan, members, close, diagram) => {
               commit((current) => {
                 const updated = new Map(members.map((n) => [n.id, n]));
                 const existing = new Set(current.characters.map((n) => n.id));
@@ -1107,7 +1154,10 @@ export default function App() {
                   ],
                   boards: current.boards.map((c) =>
                     c.id === board.id
-                      ? { ...c, characterIds: members.map((n) => n.id), investigation: plan }
+                      ? applyCreatorDiagram(
+                        { ...c, characterIds: members.map((n) => n.id), investigation: plan },
+                        diagram || { nodes: [] },
+                      )
                       : c,
                   ),
                 });
@@ -1122,7 +1172,7 @@ export default function App() {
             <div className="library-role-toolbar">
               {activeKind === 'person' ? (
                 <div className="role-filter" role="group" aria-label={tr('trace.roles')}>
-                  {(['all', 'witness', 'suspect'] as const).map((role) => (
+                  {(['all', 'witness', 'suspect', 'victim'] as const).map((role) => (
                     <button
                       key={role}
                       className={roleFilter === role ? 'active' : ''}
@@ -1134,7 +1184,9 @@ export default function App() {
                           ? 'trace.allRoles'
                           : role === 'witness'
                             ? 'trace.filterWitness'
-                            : 'trace.filterSuspect',
+                            : role === 'victim'
+                              ? 'trace.filterVictim'
+                              : 'trace.filterSuspect',
                       )}
                     </button>
                   ))}
@@ -1152,7 +1204,11 @@ export default function App() {
                     kindOf(n) === activeKind &&
                     (activeKind !== 'person' ||
                       roleFilter === 'all' ||
-                      (roleFilter === 'witness' ? n.witness : n.suspect !== false)),
+                      (roleFilter === 'witness'
+                        ? n.witness
+                        : roleFilter === 'victim'
+                          ? n.victim
+                          : n.suspect !== false)),
                 ),
               }}
               search={search}

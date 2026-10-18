@@ -22,7 +22,7 @@
 
 .ic-steps {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(150px, 100%), 150px));
   gap: 6px;
 }
 
@@ -52,11 +52,15 @@
 }
 
 .ic-steps button {
+  box-sizing: border-box;
+  height: 40px;
+  padding: 5px 10px;
   text-align: left;
   display: flex;
   gap: 8px;
   align-items: center;
   font-size: 11px;
+  line-height: 14px;
 }
 
 .ic-steps button[aria-current] {
@@ -81,11 +85,17 @@
   flex-direction: column;
   gap: 6px;
   min-width: 0;
+  margin: 0;
+  padding: 10px;
+  border: 1px solid #d9e1ed;
+  border-radius: 7px;
   font-size: 12px;
 }
 
-.ic-field > span,
 .ic-field legend {
+  max-width: 100%;
+  padding: 0 3px;
+  overflow-wrap: anywhere;
   font-weight: 650;
 }
 
@@ -94,12 +104,12 @@
 .ic-field select {
   box-sizing: border-box;
   width: 100%;
-  padding: 9px 10px;
+  padding: 0;
   font: inherit;
   color: #243148;
-  background: #fff;
-  border: 1px solid #d9e1ed;
-  border-radius: 7px;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
 }
 
 .ic-field textarea {
@@ -114,11 +124,8 @@
 }
 
 .ic-choices {
-  border: 1px solid #d9e1ed;
-  padding: 10px;
   max-height: 200px;
   overflow: auto;
-  border-radius: 7px;
 }
 
 .ic-choices label {
@@ -253,6 +260,12 @@
   margin: 4px 0 8px;
 }
 
+.ic-issue-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .ic-footer {
   display: flex;
   flex-wrap: wrap;
@@ -262,6 +275,14 @@
   bottom: 0;
   background: #fff;
   border-top: 1px solid #e2e8f1;
+}
+
+.ic-footer > label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-basis: 100%;
+  font-size: 12px;
 }
 
 .investigation-assistant .ic-primary {
@@ -286,9 +307,5 @@
 @media (max-width: 700px) {
   .ic-fields {
     grid-template-columns: 1fr;
-  }
-
-  .ic-steps {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
