@@ -171,11 +171,11 @@ describe('nested folders in JSON transfer files', () => {
       version: 1,
       kind: 'characters',
       data: {
+        version: 2,
         characters: [],
         relationTypes: [],
         circles: [],
         activeCircleId: null,
-        version: 2,
         folders: [{ id: 'flat', name: russianText('samples.legacyFolder') }],
       },
     };

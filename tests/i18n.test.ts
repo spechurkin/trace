@@ -80,7 +80,7 @@ it('keeps Cyrillic text out of application, test and build source files', async 
   }
 
   const files = (
-    await Promise.all(['src', 'shared', 'electron', 'scripts', 'tests'].map(sourceFiles))
+    await Promise.all(['src', 'shared', 'modules', 'electron', 'scripts', 'tests'].map(sourceFiles))
   ).flat();
   const sources = await Promise.all(
     files.map(async (file) => ({ file, source: await readFile(file, 'utf8') })),

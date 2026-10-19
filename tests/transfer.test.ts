@@ -68,19 +68,32 @@ function fixture(): Database {
 }
 
 describe('portable JSON exports', () => {
-  it('imports previous story packages and emits only the current board fields', () => {
-    const file = createStoriesTransfer(fixture());
-    const { boards, activeBoardId, ...rest } = file.data;
-    const previous = {
-      ...file,
-      data: { ...rest, version: 3, circles: boards, activeCircleId: activeBoardId },
-    };
-    expect(transferSchema.parse(previous)).toEqual(file);
-    const merged = mergeTransfer(emptyDatabase(), previous);
-    expect(merged.data).toEqual(file.data);
-    expect(merged.summary.boards).toBe(2);
-    expect(JSON.stringify(merged.data)).not.toMatch(/"(?:circles|activeCircleId)"/);
-  });
+  it.each([
+    [3, 'circles'],
+    [4, 'clubs'],
+  ] as const)(
+    'imports version %i %s story packages and emits only the current board fields',
+    (version, field) => {
+      const file = createStoriesTransfer(fixture());
+      const { boards, activeBoardId, ...rest } = file.data;
+      const previous = {
+        ...file,
+        data: {
+          ...rest,
+          version,
+          [field]: boards,
+          [field === 'clubs' ? 'activeClubId' : 'activeCircleId']: activeBoardId,
+        },
+      };
+      expect(transferSchema.parse(previous)).toEqual(file);
+      const merged = mergeTransfer(emptyDatabase(), previous);
+      expect(merged.data).toEqual(file.data);
+      expect(merged.summary.boards).toBe(2);
+      expect(JSON.stringify(merged.data)).not.toMatch(
+        /"(?:circles|activeCircleId|clubs|activeClubId)"/,
+      );
+    },
+  );
   it('exports a complete story with portraits, folders and used relations, omitting unrelated library entries', () => {
     const data = fixture();
     const file = createStoriesTransfer(data, ['story']);
@@ -175,7 +188,9 @@ describe('import adds to the existing library', () => {
     expect(merged.data.folders.slice(0, 2)).toEqual(local.folders);
     expect(merged.data.relationTypes.slice(0, 2)).toEqual(local.relationTypes);
     expect(merged.data.activeBoardId).toBe(local.activeBoardId);
-    const imported = merged.data.boards.find((board) => board.name === russianText('samples.story'))!;
+    const imported = merged.data.boards.find(
+      (board) => board.name === russianText('samples.story'),
+    )!;
     const alice = merged.data.characters.find(
       (character) => character.name === russianText('samples.alice'),
     )!;

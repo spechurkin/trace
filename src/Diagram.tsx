@@ -20,6 +20,16 @@ type Props = {
   onMove?: (id: string, position: Point) => void;
 };
 
+let captionContext: CanvasRenderingContext2D | null | undefined;
+
+function captionHalfWidth(text: string, font: string) {
+  if (typeof document === 'undefined') return 80;
+  if (captionContext === undefined) captionContext = document.createElement('canvas').getContext('2d');
+  if (!captionContext) return 80;
+  captionContext.font = font;
+  return captionContext.measureText(text).width / 2 + 5;
+}
+
 export default function Diagram({
                                   board,
   characters,
@@ -47,6 +57,14 @@ export default function Diagram({
   const positions = boardPositions(board);
   if (preview) positions.set(preview.id, preview.point);
   const edges = boardEdges(board, characters);
+  const captionLimit = board.characterIds.length > 12 ? 14 : 24;
+  const captionWidths = new Map(
+    characters.filter((c) => positions.has(c.id)).map((c) => [
+      c.id,
+      captionHalfWidth(truncate(c.name, captionLimit), '600 12.5px sans-serif'),
+    ]),
+  );
+  captionWidths.set(CULPRIT, captionHalfWidth(tr('trace.culprit'), '700 14px sans-serif'));
   const legend = sortByName(types.filter((t) => edges.some((e) => e.typeId === t.id)));
   const bounds = boardBounds(board, clean ? legend.length : 0);
   return (
@@ -136,14 +154,21 @@ export default function Diagram({
         if (hiddenTypes.has(edge.typeId)) return null;
         const type = types.find((t) => t.id === edge.typeId);
         if (!type || !positions.has(edge.sourceId) || !positions.has(edge.targetId)) return null;
-        const { path, label } = edgeGeometry(edge, edges, positions);
+        const { path, label } = edgeGeometry(edge, edges, positions, captionWidths);
         const selected = selectedEdge === edge.id;
         const faded =
           !!selectedCharacter &&
           edge.sourceId !== selectedCharacter &&
           edge.targetId !== selectedCharacter;
         return (
-          <g key={edge.id} opacity={faded ? 0.13 : 1} className="diagram-edge">
+          <g
+            key={edge.id}
+            opacity={faded ? 0.13 : 1}
+            className="diagram-edge"
+            data-edge-id={edge.id}
+            data-source-id={edge.sourceId}
+            data-target-id={edge.targetId}
+          >
             <title>
               {edge.sourceId === CULPRIT
                 ? tr('trace.culprit')
@@ -342,7 +367,7 @@ export default function Diagram({
               fontWeight="600"
               fontSize="12.5"
             >
-              {truncate(character.name, board.characterIds.length > 12 ? 14 : 24)}
+              {truncate(character.name, captionLimit)}
             </text>
             {locked && (
               <g transform="translate(25,-30)" pointerEvents="none">
@@ -374,6 +399,7 @@ export default function Diagram({
           }
         }}
       >
+        {!clean && <title>{tr('trace.creatorHint')}</title>}
         <circle r="57" fill="#EDF2FF" stroke="#4169E1" strokeWidth="1.5" strokeDasharray="3 5" />
         <circle r="46" fill="#173EA5" />
         <path

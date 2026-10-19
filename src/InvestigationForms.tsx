@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { tr } from '../shared/i18n';
 import type { Board, Character } from '../shared/model';
-import { canParent, CULPRIT, parentOf, setParent } from '../shared/investigation';
+import { canParent, CULPRIT, parentsOf, setParents } from '../shared/investigation';
 import { Field } from './components';
 import { sortByName } from './sorting';
+import { BranchSourcePicker } from './BranchSourcePicker';
 
 export function BranchForm({
   board,
@@ -23,7 +24,12 @@ export function BranchForm({
   const [child, setChild] = useState(
     childId && board.characterIds.includes(childId) ? childId : board.characterIds[0] || '',
   );
-  const [parent, setParentChoice] = useState(parentId || parentOf(board, child));
+  const [parents, setParentChoices] = useState(() => {
+    const current = parentsOf(board, child);
+    return parentId && !current.includes(parentId)
+      ? [...current.filter((id) => id !== CULPRIT), parentId]
+      : current;
+  });
   const [error, setError] = useState('');
   const members = sortByName(nodes.filter((n) => board.characterIds.includes(n.id)));
   return (
@@ -31,7 +37,7 @@ export function BranchForm({
       onSubmit={(e) => {
         e.preventDefault();
         try {
-          onSave(setParent(board, child, parent));
+          onSave(setParents(board, child, parents.length ? parents : [CULPRIT]));
         } catch (e) {
           setError(String(e));
         }
@@ -42,7 +48,7 @@ export function BranchForm({
           value={child}
           onChange={(e) => {
             setChild(e.target.value);
-            setParentChoice(parentOf(board, e.target.value));
+            setParentChoices(parentsOf(board, e.target.value));
             setError('');
           }}
         >
@@ -53,18 +59,19 @@ export function BranchForm({
           ))}
         </select>
       </Field>
-      <Field label={tr('trace.parent')} hint={tr('trace.branchHint')}>
-        <select value={parent} onChange={(e) => setParentChoice(e.target.value)}>
-          <option value={CULPRIT}>{tr('trace.culprit')}</option>
-          {members
-            .filter((n) => canParent(board, child, n.id))
-            .map((n) => (
-              <option key={n.id} value={n.id}>
-                {n.name}
-              </option>
-            ))}
-        </select>
-      </Field>
+      <fieldset className="branch-sources">
+        <legend className="field-label">{tr('trace.parent')}</legend>
+        <p className="field-hint">{tr('trace.branchHint')}</p>
+        <BranchSourcePicker
+          key={child}
+          nodes={members.filter((node) => canParent(board, child, node.id))}
+          selected={new Set(parents)}
+          onChange={(selected) => {
+            setParentChoices([...selected]);
+            setError('');
+          }}
+        />
+      </fieldset>
       <p className="field-hint">{tr('trace.treeHint')}</p>
       {error && (
         <p className="form-error" role="alert">
@@ -78,7 +85,7 @@ export function BranchForm({
         <button
           type="submit"
           className="button primary"
-          disabled={!child || !canParent(board, child, parent)}
+          disabled={!child || !parents.every((parent) => canParent(board, child, parent))}
         >
           {tr('actions.connect')}
         </button>
