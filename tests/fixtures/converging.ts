@@ -5,7 +5,7 @@ import { emptyPlan } from '../../modules/investigation-creator/schema';
 
 export const convergingNames = content.names;
 
-// Small structural regression; the full authored example is src/station-demo.ts.
+// Small structural regression for independent routes to the same location.
 export function convergingInvestigation(): Database {
   const nodes: Character[] = Object.entries(convergingNames).map(([id, name]) => {
     const kind = ['home', 'office', 'garage', 'station'].includes(id) ? 'location' : 'evidence';

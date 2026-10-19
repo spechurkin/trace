@@ -69,6 +69,122 @@ test.afterEach(async () => {
 });
 
 for (const locale of ['en', 'ru'] as const) {
+  test(`bulk deletion is scoped to visible library objects and persists in ${locale}`, async () => {
+    setLocale(locale);
+    const data = demoDatabase();
+    data.boards.push({ ...structuredClone(data.boards[0]), id: 'second' });
+    const categories = [
+      { kind: 'person', tab: 'navigation.characters' },
+      { kind: 'evidence', tab: 'trace.evidenceTab' },
+      { kind: 'location', tab: 'trace.locations' },
+      { kind: 'event', tab: 'trace.events' },
+    ] as const;
+    const targets = categories.map((category) => {
+      const nodes = data.characters.filter((node) => node.kind === category.kind).slice(0, 2);
+      const folderId = `bulk-${category.kind}`;
+      const folderName = `Bulk ${category.kind}`;
+      data.folders.push({
+        id: folderId,
+        name: folderName,
+        parentId: category.kind,
+        kind: category.kind,
+      });
+      nodes.forEach((node, index) => {
+        node.folderId = folderId;
+        node.name = `Batch ${category.kind} ${index + 1}`;
+      });
+      return { ...category, nodes, folderId, folderName };
+    });
+    await launch(locale, data);
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await expect(page.locator('.library-selection-toolbar')).toHaveCount(0);
+    await expect(page.locator('.character-select')).toHaveCount(0);
+    const selectTab = async (tab: (typeof categories)[number]['tab']) => {
+      await page
+        .locator('.rail')
+        .getByRole('button', { name: tr(tab), exact: true })
+        .click();
+    };
+    const removed = new Set<string>();
+    for (const target of targets) {
+      await selectTab(target.tab);
+      const toolbar = page.getByRole('group', { name: tr('characters.selectionLabel') });
+      await page
+        .getByRole('checkbox', {
+          name: tr('characters.selectLabel', target.nodes[0].name),
+          exact: true,
+        })
+        .check();
+      await expect(toolbar).toContainText(tr('characters.selectedCount', 1));
+      await toolbar
+        .getByRole('button', { name: tr('actions.clearSelection'), exact: true })
+        .click();
+      await expect(page.locator('.character-select:checked')).toHaveCount(0);
+
+      await toolbar
+        .getByRole('button', { name: tr('characters.selectAllVisible'), exact: true })
+        .click();
+      await page
+        .getByRole('textbox', { name: tr('characters.searchLabel') })
+        .fill(target.nodes[0].name);
+      await expect(toolbar).toContainText(tr('characters.selectedCount', 0));
+      await toolbar
+        .getByRole('button', { name: tr('characters.selectAllVisible'), exact: true })
+        .click();
+      await expect(page.locator('.character-select:checked')).toHaveCount(1);
+      await page.getByRole('textbox', { name: tr('characters.searchLabel') }).fill('');
+      await expect(page.locator('.character-select:checked')).toHaveCount(0);
+
+      // Match the leaf name without depending on translated ancestor names.
+      await page
+        .locator('.folder-navigation')
+        .filter({ has: page.locator('span', { hasText: target.folderName }) })
+        .click();
+      await expect(page.locator('.character-card')).toHaveCount(2);
+      await toolbar
+        .getByRole('button', { name: tr('characters.selectAllVisible'), exact: true })
+        .click();
+      await selectTab(target.kind === 'person' ? 'trace.evidenceTab' : 'navigation.characters');
+      await selectTab(target.tab);
+      await expect(page.locator('.character-select:checked')).toHaveCount(0);
+      await toolbar
+        .getByRole('button', { name: tr('characters.selectAllVisible'), exact: true })
+        .click();
+      await toolbar
+        .getByRole('button', { name: tr('characters.deleteSelected', 2), exact: true })
+        .click();
+      let dialog = page.getByRole('dialog');
+      await expect(dialog).toContainText(tr('characters.deleteSelectedMessage', 2));
+      await dialog.getByRole('button', { name: tr('actions.cancel'), exact: true }).click();
+      expect((await persisted()).characters).toEqual(
+        data.characters.filter((node) => !removed.has(node.id)),
+      );
+      await expect(page.locator('.character-select:checked')).toHaveCount(2);
+      await toolbar
+        .getByRole('button', { name: tr('characters.deleteSelected', 2), exact: true })
+        .click();
+      dialog = page.getByRole('dialog');
+      await dialog.getByRole('button', { name: tr('actions.delete'), exact: true }).click();
+      target.nodes.forEach((node) => removed.add(node.id));
+      await expect(page.locator('.character-card')).toHaveCount(0);
+      const saved = await persisted();
+      expect(saved.characters).toEqual(data.characters.filter((node) => !removed.has(node.id)));
+      expect(saved.folders).toEqual(data.folders);
+      for (const board of saved.boards) {
+        expect(board.characterIds).toEqual(
+          data.boards[0].characterIds.filter((id) => !removed.has(id)),
+        );
+        for (const id of removed) expect(board.layout).not.toHaveProperty(id);
+      }
+    }
+    await app.close();
+    await reopen();
+    expect((await persisted()).characters).toEqual(
+      data.characters.filter((node) => !removed.has(node.id)),
+    );
+    await expect(page.locator('.library-selection-toolbar')).toHaveCount(0);
+  });
+
   test(`folders stay isolated by category through creation, editing and reopen in ${locale}`, async () => {
     await launch(locale);
     const categories = [
@@ -553,6 +669,51 @@ test('localized tabs, role filters, screenshots and SVG/PNG exports work in Elec
   await page.screenshot({ path: path.join(root, 'docs/screenshots/trace-ru.png') });
   await page.locator('[data-node-id="door"]').click();
   await page.screenshot({ path: path.join(root, 'docs/screenshots/trace-evidence-ru.png') });
+});
+
+test('short captions allow straight arrows and editing a caption restores the required detour', async () => {
+  const data = emptyDatabase();
+  data.characters = ['a', 'b', 'clue'].map((id, index) => ({
+    id, name: ['Source', 'Target', 'Clue'][index], kind: 'evidence',
+    color: '#D93846', notes: '', folderId: null,
+  }));
+  data.boards = [{
+    id: 'routing', name: 'Caption routing', description: '',
+    characterIds: ['a', 'b', 'clue'], connections: [],
+    layout: {
+      a: { x: 220, y: -100, parentId: '__culprit__' },
+      b: { x: 700, y: 100, parentId: 'a' },
+      clue: { x: 520, y: -54, parentId: 'a' },
+    },
+  }];
+  data.activeBoardId = 'routing';
+  await launch('en', data);
+  const arrow = page.locator('[data-source-id="a"][data-target-id="b"] > path').first();
+  await expect(arrow).toHaveAttribute('d', /^M [\d. -]+ L [\d. -]+$/);
+  const straight = await arrow.getAttribute('d');
+  await page.screenshot({ path: 'test-results/caption-straight.png' });
+
+  await app.evaluate(({ dialog }) => {
+    dialog.showSaveDialog = async () => ({
+      canceled: false, filePath: process.env.TRACE_DATA_DIR + '/straight.svg',
+    });
+  });
+  await page.getByRole('button', { name: tr('actions.export'), exact: true }).click();
+  await page.getByRole('button', { name: new RegExp('SVG') }).click();
+  await expect(page.locator('.toast')).toContainText('SVG');
+  expect(await readFile(path.join(directory, 'straight.svg'), 'utf8')).toContain(`d="${straight}"`);
+
+  await page.locator('[data-node-id="clue"]').click();
+  await page.locator('.inspector').getByRole('button', { name: 'Edit', exact: true }).click();
+  await page.getByRole('dialog').getByLabel('Name / title', { exact: true }).fill('WWWWWWWWWWWW');
+  await page.getByRole('dialog').getByRole('button', { name: 'Save changes', exact: true }).click();
+  await expect(arrow).not.toHaveAttribute('d', straight!);
+  await page.screenshot({ path: 'test-results/caption-detour.png' });
+  await persisted();
+  await app.close();
+  await reopen();
+  await expect(page.locator('[data-source-id="a"][data-target-id="b"] > path').first())
+    .not.toHaveAttribute('d', straight!);
 });
 
 test('portrait editing and board renaming preserve image metadata, answers and locked layout', async () => {

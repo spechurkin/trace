@@ -2,7 +2,7 @@
 import type { Connection } from '../shared/model';
 import type { Point } from './geometry';
 import { CULPRIT } from '../shared/investigation';
-import { type EdgePath, routeEdges } from './edge-routing';
+import { type EdgePath, obstacleHits, routeEdges, straightGeometry } from './edge-routing';
 
 const NODE_RADIUS = 34;
 
@@ -10,6 +10,7 @@ function baseGeometry(
   edge: Connection,
   edges: Connection[],
   positions: Map<string, Point>,
+  captionWidths: Map<string, number>,
 ): EdgePath {
   const start = positions.get(edge.sourceId)!;
   const end = positions.get(edge.targetId)!;
@@ -31,6 +32,8 @@ function baseGeometry(
   const nx = -dy / length,
     ny = dx / length;
   const bend = lane * 48 * orientation;
+  const direct = straightGeometry(edge, positions);
+  if (parallel.length === 1 && !obstacleHits(edge, direct, positions, captionWidths)) return direct;
   const points = [...positions.values()];
   const minX = Math.min(...points.map((p) => p.x)) - 90,
     maxX = Math.max(...points.map((p) => p.x)) + 90;
@@ -55,7 +58,9 @@ function baseGeometry(
       for (const [id, point] of obstacles) {
         if (
           Math.hypot(p.x - point.x, p.y - point.y) < (id === CULPRIT ? 63 : 48) ||
-          (Math.abs(p.x - point.x) < 90 && p.y - point.y > 38 && p.y - point.y < 74)
+          (Math.abs(p.x - point.x) < (captionWidths.get(id) ?? 80) + 10 &&
+            p.y - point.y > 38 &&
+            p.y - point.y < 74)
         )
           hits++;
       }
@@ -106,17 +111,20 @@ export function edgeGeometry(
   edge: Connection,
   edges: Connection[],
   positions: Map<string, Point>,
+  captionWidths: Map<string, number> = new Map(),
 ): EdgePath {
   const list = edges.some((e) => e.id === edge.id) ? edges : [edge];
   const key = JSON.stringify([
     list.map((e) => [e.id, e.sourceId, e.targetId, e.directed]),
     [...positions],
+    [...captionWidths],
   ]);
   if (key !== cacheKey) {
     cache = routeEdges(
       list,
       positions,
-      new Map(list.map((e) => [e.id, baseGeometry(e, list, positions)])),
+      new Map(list.map((e) => [e.id, baseGeometry(e, list, positions, captionWidths)])),
+      captionWidths,
     );
     cacheKey = key;
   }

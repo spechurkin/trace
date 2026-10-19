@@ -252,6 +252,44 @@ describe('time constraints and alibis', () => {
     s.p.ordering.push({ id: 'order', beforeId: 't1', afterId: 't2', minGap: 0, maxGap: 100 });
     expect(s.audit().issues.find((i) => i.code === 'temporalCycle')!.ids).toContain('order');
   });
+  it.each(['en', 'ru'] as const)(
+    'describes temporal witnesses with names and localized record labels in %s',
+    (locale) => {
+      const s = timeGraph();
+      s.nodes.find((n) => n.id === 'start')!.name = 'Departure';
+      s.nodes.find((n) => n.id === 'end')!.name = 'Arrival';
+      s.p.ordering.push({
+        id: 'opaque-order', beforeId: 't1', afterId: 't2', minGap: 0, maxGap: 2,
+      });
+      const before = structuredClone(s.board);
+      const issue = auditInvestigation(s.board, s.nodes, locale).issues.find(
+        (i) => i.code === 'temporalCycle',
+      )!;
+      expect(issue.ids).toEqual(expect.arrayContaining(['opaque-order', 't1', 't2']));
+      expect(issue.args[0]).toContain('Departure');
+      expect(issue.args[0]).toContain('Arrival');
+      expect(issue.args[0]).toContain(locale === 'ru' ? 'Ограничение №1' : 'Constraint #1');
+      expect(issue.args[0]).toContain('night');
+      for (const id of issue.ids) expect(issue.args[0]).not.toContain(id);
+      expect(s.board).toEqual(before);
+    },
+  );
+  it('describes broken order references without exposing their internal IDs', () => {
+    const s = timeGraph();
+    s.p.ordering.push({
+      id: 'opaque-order',
+      beforeId: 'missing-time',
+      afterId: 't2',
+      minGap: 0,
+      maxGap: null,
+    });
+    const issue = s.audit().issues.find((i) => i.code === 'orderReference')!;
+    expect(issue.args[0]).toContain('Constraint #1');
+    expect(issue.args[0]).toContain('Missing record');
+    expect(issue.args[0]).toContain('end');
+    expect(issue.args[0]).not.toContain('opaque-order');
+    expect(issue.args[0]).not.toContain('missing-time');
+  });
   it('checks joint scheduling when every pair is individually possible', () => {
     const s = timeGraph();
     s.nodes.push({ id: 'third-place', name: 'Third place', kind: 'location' });

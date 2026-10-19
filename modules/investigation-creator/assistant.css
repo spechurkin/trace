@@ -266,6 +266,16 @@
   gap: 8px;
 }
 
+.ic-report .ic-time-details {
+  list-style: disc;
+  padding-left: 20px;
+  margin: 8px 0 12px;
+}
+
+.ic-time-details li + li {
+  margin-top: 6px;
+}
+
 .ic-footer {
   display: flex;
   flex-wrap: wrap;

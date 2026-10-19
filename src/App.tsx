@@ -43,6 +43,7 @@ import {
   databaseSchema,
   deleteCharacter,
   deleteCharacterFolder,
+  deleteCharacters,
   removeFromBoard,
   upsertBoard,
 } from '../shared/model';
@@ -50,7 +51,6 @@ import {
   createCharactersTransfer,
   createStoriesTransfer,
   describeImport,
-  mergeTransfer,
   type TransferPackage,
 } from '../shared/transfer';
 import { folderKindOf, folderPath, folderSubtree } from '../shared/folders';
@@ -59,7 +59,6 @@ import { BoardForm, CharacterForm, FolderForm, ParticipantsForm } from './forms'
 import CharacterLibrary from './CharacterLibrary';
 import Diagram from './Diagram';
 import { demoDatabase } from './demo';
-import { stationDatabase } from './station-demo';
 import { storage } from './storage';
 import { useLibrary } from './useLibrary';
 import {
@@ -256,26 +255,6 @@ export default function App() {
   const libraryView = ['characters', 'evidence', 'locations', 'events'].includes(view);
   const [roleFilter, setRoleFilter] = useState<'all' | 'witness' | 'suspect' | 'victim'>('all');
   const newCharacter = () => setEditor({ kind: 'character', nodeKind: activeKind });
-  const addStationExample = () => {
-    try {
-      const example = stationDatabase();
-      commit((current) => {
-        const before = new Set(current.boards.map((b) => b.id));
-        const merged = mergeTransfer(current, createStoriesTransfer(example)).data;
-        const added =
-          merged.boards.find((b) => !before.has(b.id)) ??
-          merged.boards.find(
-            (b) =>
-              b.name === example.boards[0].name && b.description === example.boards[0].description,
-          );
-        return { ...merged, activeBoardId: added?.id ?? merged.activeBoardId };
-      });
-      setBoardMenu(false);
-      notify(tr('notifications.exampleAdded'));
-    } catch (error) {
-      notify(error instanceof Error ? error.message : String(error));
-    }
-  };
   const newFolder = () =>
     setEditor({
       kind: 'folder',
@@ -364,6 +343,17 @@ export default function App() {
         clearSelection();
       },
     });
+  const askDeleteCharacters = (characterIds: string[]) => {
+    if (!characterIds.length) return;
+    setConfirmation({
+      title: tr('characters.deleteSelectedTitle'),
+      text: tr('characters.deleteSelectedMessage', characterIds.length),
+      action: () => {
+        commit((data) => deleteCharacters(data, characterIds));
+        clearSelection();
+      },
+    });
+  };
   const importBackup = async () => {
     setBusy(true);
     try {
@@ -720,13 +710,6 @@ export default function App() {
                         <Trash2 size={15} />
                         {tr('boards.delete')}
                       </button>
-                      <button
-                        disabled={data.boards.length >= BOARD_CREATION_LIMIT}
-                        onClick={addStationExample}
-                      >
-                        <Sparkles size={15} />
-                        {tr('demo.stationExample')}
-                      </button>
                     </div>
                   )}
                 </div>
@@ -1041,22 +1024,16 @@ export default function App() {
                     {board ? tr('characters.add') : tr('boards.createFirst')}
                   </button>
                   {!board && !data.characters.length && (
-                    <>
-                      <button
-                        className="text-button demo-button"
-                        onClick={() => {
-                          commit(() => demoDatabase());
-                          notify(tr('notifications.exampleAdded'));
-                        }}
-                      >
-                        <Sparkles size={15} />
-                        {tr('demo.explore')}
-                      </button>
-                      <button className="text-button demo-button" onClick={addStationExample}>
-                        <Sparkles size={15} />
-                        {tr('demo.stationExample')}
-                      </button>
-                    </>
+                    <button
+                      className="text-button demo-button"
+                      onClick={() => {
+                        commit(() => demoDatabase());
+                        notify(tr('notifications.exampleAdded'));
+                      }}
+                    >
+                      <Sparkles size={15} />
+                      {tr('demo.explore')}
+                    </button>
                   )}
                   {!board && (
                     <button
@@ -1196,6 +1173,7 @@ export default function App() {
               )}
             </div>
             <CharacterLibrary
+              key={`${activeKind}:${roleFilter}`}
               data={{
                 ...data,
                 folders: data.folders.filter((folder) => folderKindOf(folder) === activeKind),
@@ -1222,6 +1200,7 @@ export default function App() {
               onNewCharacter={newCharacter}
               onEditCharacter={(character) => setEditor({ kind: 'character', id: character.id })}
               onDeleteCharacter={askDeleteCharacter}
+              onDeleteCharacters={askDeleteCharacters}
               onExportCharacter={(character) =>
                 void exportJSON(
                   createCharactersTransfer(data, { characterIds: [character.id] }),

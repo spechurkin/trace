@@ -30,6 +30,63 @@ const crossPaths = (a: Point[], b: Point[]) =>
     }),
   );
 
+export function straightGeometry(edge: Connection, positions: Map<string, Point>): EdgePath {
+  const start = positions.get(edge.sourceId)!,
+    end = positions.get(edge.targetId)!;
+  const span = distance(start, end) || 1;
+  const at = (offset: number) => ({
+    x: start.x + ((end.x - start.x) * offset) / span,
+    y: start.y + ((end.y - start.y) * offset) / span,
+  });
+  const a = at(edge.sourceId === CULPRIT ? 63 : 39),
+    b = at(span - (edge.targetId === CULPRIT ? 63 : edge.directed ? 48 : 39));
+  return {
+    path: `M ${a.x} ${a.y} L ${b.x} ${b.y}`,
+    label: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 },
+    samples: [a, b],
+  };
+}
+
+export function obstacleHits(
+  edge: Connection,
+  path: EdgePath,
+  positions: Map<string, Point>,
+  captionWidths: Map<string, number> = new Map(),
+) {
+  return [...positions].filter(([id, p]) => {
+    if (id === edge.sourceId || id === edge.targetId) return false;
+    const radius = id === CULPRIT ? 63 : 42;
+    // Captions have a 58px baseline (79px for the culprit). Keep a margin
+    // around the text without reserving the empty space below the circle.
+    const top = p.y + (id === CULPRIT ? 64 : 44),
+      bottom = p.y + (id === CULPRIT ? 84 : 65);
+    const halfWidth = captionWidths.get(id) ?? 80;
+    const corners = [
+      { x: p.x - halfWidth, y: top },
+      { x: p.x + halfWidth, y: top },
+      { x: p.x + halfWidth, y: bottom },
+      { x: p.x - halfWidth, y: bottom },
+    ];
+    const inside = (q: Point) =>
+      q.x >= p.x - halfWidth && q.x <= p.x + halfWidth && q.y >= top && q.y <= bottom;
+    return path.samples.slice(1).some((b, i) => {
+      const a = path.samples[i],
+        dx = b.x - a.x,
+        dy = b.y - a.y;
+      const t = Math.max(
+        0,
+        Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / (dx * dx + dy * dy || 1)),
+      );
+      return (
+        distance(p, { x: a.x + t * dx, y: a.y + t * dy }) < radius ||
+        inside(a) ||
+        inside(b) ||
+        corners.some((corner, j) => segmentsIntersect(a, b, corner, corners[(j + 1) % 4]))
+      );
+    });
+  }).length;
+}
+
 function rounded(points: Point[]): EdgePath {
   const samples = [points[0]];
   let path = `M ${points[0].x} ${points[0].y}`;
@@ -67,6 +124,7 @@ function route(
   edges: Connection[],
   paths: Map<string, EdgePath>,
   positions: Map<string, Point>,
+  captionWidths: Map<string, number>,
 ): EdgePath | undefined {
   const start = positions.get(edge.sourceId)!,
     end = positions.get(edge.targetId)!;
@@ -96,7 +154,9 @@ function route(
       obstacles.some(
         ([id, q]) =>
           distance(p, q) < (id === CULPRIT ? 64 : 43) ||
-          (Math.abs(p.x - q.x) < 83 && p.y - q.y > 38 && p.y - q.y < 75),
+          (Math.abs(p.x - q.x) < (captionWidths.get(id) ?? 80) + 3 &&
+            p.y - q.y > (id === CULPRIT ? 63 : 43) &&
+            p.y - q.y < (id === CULPRIT ? 85 : 66)),
       )
     )
       blocked[i] = 1;
@@ -202,6 +262,7 @@ export function routeEdges(
   edges: Connection[],
   positions: Map<string, Point>,
   initial: Map<string, EdgePath>,
+  captionWidths: Map<string, number> = new Map(),
 ) {
   const paths = new Map(initial);
   // Bound synchronous routing work so a large board stays responsive.
@@ -214,26 +275,44 @@ export function routeEdges(
         crossPaths(path.samples, paths.get(other.id)!.samples),
     ).length;
   const hits = (edge: Connection, path: EdgePath) =>
-    [...positions].filter(
-      ([id, p]) =>
-        id !== edge.sourceId &&
-        id !== edge.targetId &&
-        path.samples.some(
-          (q) =>
-            distance(p, q) < (id === CULPRIT ? 63 : 42) ||
-            (Math.abs(q.x - p.x) < 80 && q.y - p.y > 39 && q.y - p.y < 74),
-        ),
-    ).length;
+    obstacleHits(edge, path, positions, captionWidths);
+  const single = new Set(
+    edges
+      .filter(
+        (edge) =>
+          !edges.some(
+            (other) =>
+              other.id !== edge.id &&
+              ((other.sourceId === edge.sourceId && other.targetId === edge.targetId) ||
+                (other.sourceId === edge.targetId && other.targetId === edge.sourceId)),
+          ),
+      )
+      .map((edge) => edge.id),
+  );
   for (let pass = 0; pass < 4; pass++) {
     let changed = false;
     const counts = new Map(edges.map((edge) => [edge.id, conflicts(edge, paths.get(edge.id)!)]));
     const order = [...edges].sort((a, b) => counts.get(b.id)! - counts.get(a.id)!);
     for (const edge of order) {
-      const old = paths.get(edge.id)!,
-        count = conflicts(edge, old),
+      let old = paths.get(edge.id)!;
+      // Revisit even conflict-free curves: another edge's detour may have
+      // freed the direct route. Parallel arrows must retain separate lanes.
+      if (single.has(edge.id)) {
+        const direct = straightGeometry(edge, positions);
+        if (
+          !hits(edge, direct) &&
+          conflicts(edge, direct) <= conflicts(edge, old) &&
+          length(direct.samples) + 0.01 < length(old.samples)
+        ) {
+          paths.set(edge.id, direct);
+          old = direct;
+          changed = true;
+        }
+      }
+      const count = conflicts(edge, old),
         cards = hits(edge, old);
       if (!count && !cards) continue;
-      const next = route(edge, edges, paths, positions);
+      const next = route(edge, edges, paths, positions, captionWidths);
       if (!next) continue;
       const nextCount = conflicts(edge, next);
       if (

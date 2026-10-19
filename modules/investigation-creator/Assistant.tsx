@@ -342,8 +342,9 @@ export function InvestigationAssistant<T extends InvestigationNode>({
   const [error, setError] = useState('');
   const [replaceManual, setReplaceManual] = useState(false);
   const report = useMemo(
-    () => auditInvestigation({ characterIds: nodes.map((n) => n.id), investigation: plan }, nodes),
-    [plan, nodes],
+    () =>
+      auditInvestigation({ characterIds: nodes.map((n) => n.id), investigation: plan }, nodes, locale),
+    [plan, nodes, locale],
   );
   const suggestions = useMemo(() => suggestVersions(plan, nodes), [plan, nodes]);
   const active = steps[step];
@@ -494,6 +495,11 @@ export function InvestigationAssistant<T extends InvestigationNode>({
                     : t('recommendations')}
               </strong>
               <p>{t(`issue_${issue.code}` as CreatorMessage, ...issue.args)}</p>
+              {issue.details && issue.details.length > 0 && (
+                <ul className="ic-time-details">
+                  {issue.details.map((detail, index) => <li key={index}>{detail}</li>)}
+                </ul>
+              )}
               <div className="ic-issue-actions">
                 <button
                   type="button"
@@ -968,33 +974,35 @@ export function InvestigationAssistant<T extends InvestigationNode>({
         <button type="button" onClick={() => save()}>
           {t('save')}
         </button>
-        <button
-          type="button"
-          className="ic-primary"
-          title={t('assembleHint')}
-          onClick={() => save(true, true)}
-        >
-          {t('assemble')}
-        </button>
-        <label title={t('assemblePreservation')}>
-          <input
-            type="checkbox"
-            checked={replaceManual}
-            onChange={(event) => setReplaceManual(event.target.checked)}
-          />{' '}
-          {t('replaceManual')}
-        </label>
-        {mode === 'create' && (
+        {mode === 'create' && step < steps.length - 1 ? (
           <button
             type="button"
             className="ic-primary"
             onClick={() => {
-              if (step === steps.length - 1) save(true);
-              else if (save()) setStep(step + 1);
+              if (save()) setStep(step + 1);
             }}
           >
-            {t(step === steps.length - 1 ? 'finish' : 'next')}
+            {t('next')}
           </button>
+        ) : (
+          <>
+            <button
+              type="button"
+              className="ic-primary"
+              title={t('assembleHint')}
+              onClick={() => save(true, true)}
+            >
+              {t('assemble')}
+            </button>
+            <label title={t('assemblePreservation')}>
+              <input
+                type="checkbox"
+                checked={replaceManual}
+                onChange={(event) => setReplaceManual(event.target.checked)}
+              />{' '}
+              {t('replaceManual')}
+            </label>
+          </>
         )}
       </footer>
     </div>

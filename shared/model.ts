@@ -374,26 +374,35 @@ export function deleteCharacterFolder(data: Database, folderId: string): Databas
 }
 
 export function deleteCharacter(data: Database, characterId: string): Database {
+  return deleteCharacters(data, [characterId]);
+}
+
+export function deleteCharacters(data: Database, characterIds: string[]): Database {
+  const removed = new Set(characterIds);
   return {
     ...data,
-    characters: data.characters.filter((c) => c.id !== characterId),
-    boards: data.boards.map((c) => removeFromBoard(c, characterId)),
+    characters: data.characters.filter((c) => !removed.has(c.id)),
+    boards: data.boards.map((board) => removeCharactersFromBoard(board, removed)),
   };
 }
 
 export function removeFromBoard(board: Board, characterId: string): Board {
-  const members = new Set(board.characterIds.filter((id) => id !== characterId));
+  return removeCharactersFromBoard(board, new Set([characterId]));
+}
+
+function removeCharactersFromBoard(board: Board, removed: Set<string>): Board {
+  const members = new Set(board.characterIds.filter((id) => !removed.has(id)));
   return {
     ...board,
-    characterIds: board.characterIds.filter((id) => id !== characterId),
+    characterIds: [...members],
     connections: board.connections.filter(
-      (e) => e.sourceId !== characterId && e.targetId !== characterId,
+      (e) => !removed.has(e.sourceId) && !removed.has(e.targetId),
     ),
     ...(board.layout
       ? {
           layout: Object.fromEntries(
             Object.entries(board.layout)
-              .filter(([id]) => id !== characterId)
+              .filter(([id]) => !removed.has(id))
               .map(([id, value]) => [id, retainParents(value, members)]),
           ),
         }

@@ -8,7 +8,6 @@ import { messages } from '../../modules/investigation-creator/messages';
 import { emptyPlan } from '../../modules/investigation-creator/schema';
 import { buildInvestigationDiagram } from '../../modules/investigation-creator/diagram';
 import { applyCreatorDiagram } from '../../src/creator-diagram';
-import { stationDatabase } from '../../src/station-demo';
 import { observationsInvestigation } from '../fixtures/observations';
 import { pathCrossings } from '../diagram-metrics';
 import { boardEdges, parentsOf } from '../../shared/investigation';
@@ -334,59 +333,6 @@ for (const locale of ['en', 'ru'] as const) {
     }
   });
 }
-
-for (const locale of ['en', 'ru'] as const) {
-  test(`full pumping station example balances compactness and crossings with all feedback paths in ${locale}`, async () => {
-    setLocale(locale);
-    const t = messages(locale),
-      data = stationDatabase(locale);
-    await launch(data, locale);
-    await expect(page.locator('.diagram-node')).toHaveCount(28);
-    expect(await renderedCrossings()).toBeLessThanOrEqual(3);
-    const board = (await persisted()).boards[0];
-    // Electron measures the actual font; allow its layout to differ from the
-    // conservative text widths used to assemble an imported example in Node.
-    expect(longestLink(board, data)).toBeLessThan(750);
-    expect(parentsOf(board, 'station').sort()).toEqual(['invoices', 'navigator', 'phone']);
-    expect(parentsOf(board, 'home')).toContain('waybills');
-    expect(parentsOf(board, 'home')).toContain('colleagueNote');
-    expect(parentsOf(board, 'office')).toContain('waybills');
-    await page.screenshot({ path: `test-results/station-expanded-${locale}.png` });
-    await app.close();
-    await reopen();
-    expect((await persisted()).boards[0].layout).toEqual(board.layout);
-    await page.evaluate(() => {
-      Math.random = () => 0.3;
-    });
-    await page.locator('[data-node-id="__culprit__"]').click();
-    await page
-      .locator('.ic-footer')
-      .getByRole('button', { name: t('assemble'), exact: true })
-      .click();
-    await expect(page.locator('.investigation-creator-mode')).toHaveCount(0);
-    expect(await renderedCrossings()).toBeLessThanOrEqual(3);
-    expect(longestLink((await persisted()).boards[0], data)).toBeLessThan(750);
-    await page.screenshot({ path: `test-results/station-reassembled-${locale}.png` });
-  });
-}
-
-test('adds the full station example from the board menu without replacing an existing library', async () => {
-  setLocale('ru');
-  const original = demoDatabase();
-  await launch(original, 'ru');
-  await page.getByRole('button', { name: tr('boards.actionsLabel'), exact: true }).click();
-  await page.getByRole('button', { name: tr('demo.stationExample'), exact: true }).click();
-  await expect(page.locator('.board-list-item')).toHaveCount(2);
-  const saved = await persisted();
-  expect(saved.boards.find((b) => b.id === original.boards[0].id)).toEqual(original.boards[0]);
-  expect(
-    saved.characters.filter((n) => original.characters.some((old) => old.id === n.id)),
-  ).toEqual(original.characters);
-  expect(saved.boards.find((b) => b.id === saved.activeBoardId)!.characterIds).toHaveLength(27);
-  expect(saved.boards.find((b) => b.id === saved.activeBoardId)!.investigation!.endings).toEqual([
-    'records',
-  ]);
-});
 
 test('assembly failure leaves the saved board intact and allows returning to it', async () => {
   setLocale('en');

@@ -1,6 +1,9 @@
 import type { InvestigationBoard, InvestigationNode } from './contracts';
 import { kindOf, questionKeys } from './contracts';
 import { emptyPlan, type InvestigationPlan } from './schema';
+import { auditLabels } from './audit-labels';
+import type { CreatorLocale } from './messages';
+import { timeDetails } from './time-details';
 
 export type Severity = 'error' | 'warning' | 'info';
 export type AuditGroup =
@@ -11,6 +14,7 @@ export type AuditIssue = {
   group: AuditGroup;
   ids: string[];
   args: (string | number)[];
+  details?: string[];
 };
 export type Knowledge = {
   supports: string[];
@@ -234,31 +238,35 @@ function temporalNetwork(
   };
 }
 
-export function auditInvestigation(board: InvestigationBoard, allNodes: InvestigationNode[]) {
+export function auditInvestigation(
+  board: InvestigationBoard,
+  allNodes: InvestigationNode[],
+  locale: CreatorLocale = 'en',
+) {
   const p = board.investigation || emptyPlan();
   const nodes = allNodes.filter((n) => board.characterIds.includes(n.id));
   const byId = new Map(nodes.map((n) => [n.id, n]));
   const conclusions = new Map(p.conclusions.map((c) => [c.id, c]));
   const issues: AuditIssue[] = [];
-  const label = (id: string) =>
-    byId.get(id)?.name ||
-    conclusions.get(id)?.text ||
-    p.timeline.find((t) => t.id === id)?.nodeId ||
-    id;
+  const label = auditLabels(p, allNodes, locale);
+  const explainTime = timeDetails(p, label, locale);
   const add = (
     code: string,
     severity: Severity,
     group: AuditGroup,
     ids: string[] = [],
     ...args: (string | number)[]
-  ) =>
-    issues.push({
+  ) => {
+    const issue: AuditIssue = {
       code,
       severity,
       group,
       ids,
       args: args.length ? args : [ids.map(label).join(', ')],
-    });
+    };
+    issues.push(issue);
+    return issue;
+  };
   const reference = (id: string | null, group: AuditGroup, kind?: string) => {
     if (id === null) return;
     if (!byId.has(id) || (kind && kindOf(byId.get(id)!) !== kind))
@@ -465,7 +473,8 @@ export function auditInvestigation(board: InvestigationBoard, allNodes: Investig
     t.personIds.forEach((id) => reference(id, 'timeline', 'person'));
     if (!t.period.trim() || !t.locationId || !t.personIds.length)
       add('timeIncomplete', 'warning', 'timeline', [t.nodeId]);
-    if (t.earliest > t.latest) add('timeRange', 'error', 'timeline', [t.id]);
+    if (t.earliest > t.latest)
+      add('timeRange', 'error', 'timeline', [t.id]).details = explainTime.row(t);
   }
   for (const n of nodes.filter(
     (n) => kindOf(n) === 'event' && !p.timeline.some((t) => t.nodeId === n.id),
@@ -477,7 +486,8 @@ export function auditInvestigation(board: InvestigationBoard, allNodes: Investig
       after = temporalById.get(o.afterId);
     if (!before || !after || before.period !== after.period)
       add('orderReference', 'error', 'timeline', [o.id]);
-    if (o.maxGap !== null && o.maxGap < o.minGap) add('timeRange', 'error', 'timeline', [o.id]);
+    if (o.maxGap !== null && o.maxGap < o.minGap)
+      add('timeRange', 'error', 'timeline', [o.id]).details = explainTime.invalidGap(o);
   }
   for (const travel of p.travel) {
     reference(travel.fromId, 'timeline', 'location');
@@ -488,7 +498,7 @@ export function auditInvestigation(board: InvestigationBoard, allNodes: Investig
     const rows = p.timeline.filter((t) => t.period === period && t.certainty === 'confirmed');
     const network = temporalNetwork(p, rows);
     if (network.conflict.length) {
-      add('temporalCycle', 'error', 'timeline', network.conflict);
+      add('temporalCycle', 'error', 'timeline', network.conflict).details = explainTime.cycle(network.conflict);
       continue;
     }
     const disjunctions: [
@@ -546,9 +556,10 @@ export function auditInvestigation(board: InvestigationBoard, allNodes: Investig
             'error',
             'timeline',
             [a.nodeId, b.nodeId, ...a.personIds.filter((id) => b.personIds.includes(id))],
-          );
+          ).details = explainTime.presence(a, b, [aMin, aMax], [bMin, bMax], travel, canAB, canBA);
         else if (aMax + a.duration + travel > bMin && bMax + b.duration + travel > aMin)
-          add('timeAmbiguous', 'warning', 'timeline', [a.nodeId, b.nodeId]);
+          add('timeAmbiguous', 'info', 'timeline', [a.nodeId, b.nodeId]).details =
+            explainTime.presence(a, b, [aMin, aMax], [bMin, bMax], travel, canAB, canBA);
         if (uncertain && (canAB || canBA)) disjunctions.push([ab, ba]);
       }
     // Disjunctive scheduling checks joint feasibility: individually feasible
@@ -575,7 +586,7 @@ export function auditInvestigation(board: InvestigationBoard, allNodes: Investig
             'error',
             'timeline',
             rows.map((r) => r.nodeId),
-          );
+          ).details = rows.flatMap(r => explainTime.row(r, network.bounds.get(r.id)));
         if (feasible === null) limited = true;
       }
     }

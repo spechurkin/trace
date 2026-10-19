@@ -30,6 +30,7 @@ type Props = {
   onNewCharacter: () => void;
   onEditCharacter: (character: Character) => void;
   onDeleteCharacter: (character: Character) => void;
+  onDeleteCharacters: (ids: string[]) => void;
   onExportCharacter: (character: Character) => void;
   exporting: boolean;
 };
@@ -47,10 +48,12 @@ export default function CharacterLibrary({
   onNewCharacter,
   onEditCharacter,
   onDeleteCharacter,
+                                           onDeleteCharacters,
   onExportCharacter,
   exporting,
 }: Props) {
   const [collapsed, setCollapsed] = useState(new Set<string>());
+  const [selected, setSelected] = useState(new Set<string>());
   const entries = folderEntries(data.folders);
   const trail =
     activeFolder && activeFolder !== ':unfiled' ? folderTrail(data.folders, activeFolder) : [];
@@ -112,6 +115,14 @@ export default function CharacterLibrary({
   const total = visibleGroups.reduce((sum, group) => sum + group.characters.length, 0);
   const matches = visibleGroups.reduce((sum, group) => sum + group.matches.length, 0);
   const selectedFolder = groups.find((group) => group.id === activeFolder);
+  const visibleIds = visibleGroups.flatMap((group) =>
+    group.matches.map((character) => character.id),
+  );
+  const visibleKey = JSON.stringify(visibleIds);
+  const selectedIds = visibleIds.filter((id) => selected.has(id));
+  useEffect(() => {
+    setSelected(new Set());
+  }, [activeFolder, search, visibleKey]);
 
   return (
     <section className="library-page character-library">
@@ -274,6 +285,35 @@ export default function CharacterLibrary({
               : tr('counts.charactersWithValue', total)}
           </span>
         </div>
+        {matches > 0 && (
+          <div
+            className="library-selection-toolbar"
+            role="group"
+            aria-label={tr('characters.selectionLabel')}
+          >
+            <button
+              className="button secondary"
+              onClick={() => setSelected(new Set(visibleIds))}
+              disabled={selectedIds.length === visibleIds.length}
+            >
+              {tr('characters.selectAllVisible')}
+            </button>
+            <span className="muted" role="status">
+              {tr('characters.selectedCount', selectedIds.length)}
+            </span>
+            {selectedIds.length > 0 && (
+              <>
+                <button className="text-button" onClick={() => setSelected(new Set())}>
+                  {tr('actions.clearSelection')}
+                </button>
+                <button className="button danger" onClick={() => onDeleteCharacters(selectedIds)}>
+                  <Trash2 size={15} />
+                  {tr('characters.deleteSelected', selectedIds.length)}
+                </button>
+              </>
+            )}
+          </div>
+        )}
         {visibleGroups
           .filter((group) => group.matches.length)
           .map((group) => (
@@ -289,10 +329,28 @@ export default function CharacterLibrary({
               </div>
               <div className="character-grid">
                 {group.matches.map((character) => (
-                  <article className="character-card" key={character.id}>
+                  <article
+                    className={`character-card ${selected.has(character.id) ? 'selected' : ''}`}
+                    key={character.id}
+                  >
                     <div className="card-top">
                       <Avatar character={character} size={62} />
                       <div className="card-actions">
+                        <input
+                          type="checkbox"
+                          className="character-select"
+                          aria-label={tr('characters.selectLabel', character.name)}
+                          checked={selected.has(character.id)}
+                          onChange={(event) => {
+                            const checked = event.target.checked;
+                            setSelected((previous) => {
+                              const next = new Set(previous);
+                              if (checked) next.add(character.id);
+                              else next.delete(character.id);
+                              return next;
+                            });
+                          }}
+                        />
                         <button
                           className="icon-button"
                           aria-label={tr('characters.editLabel', character.name)}
