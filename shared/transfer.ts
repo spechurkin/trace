@@ -2,7 +2,7 @@ import { tr } from './i18n';
 import { z } from 'zod';
 import { BOARD_CREATION_LIMIT, type Database, databaseSchema, emptyDatabase, type LoadResult } from './model';
 import { folderEntries, folderKindOf, folderSubtree, withFolderAncestors } from './folders';
-import { remapLegacyInvestigation } from './legacy-investigation';
+import { remapPlan } from '../modules/investigation-creator/schema';
 
 export const transferSchema = z
   .object({
@@ -46,10 +46,12 @@ export function createStoriesTransfer(input: Database, boardIds?: string[]): Tra
   const boards = selected(source.boards, boardIds);
   const characterIds = new Set(boards.flatMap((board) => board.characterIds));
   const characters = source.characters.filter((character) => characterIds.has(character.id));
-  const folderIds = withFolderAncestors(
-    source.folders,
-    characters.map((character) => character.folderId),
-  );
+  const folderIds = withFolderAncestors(source.folders, [
+    ...characters.map((character) => character.folderId),
+    ...boards.flatMap((board) =>
+      (board.creatorFolderIds || []).flatMap((id) => [...folderSubtree(source.folders, id)]),
+    ),
+  ]);
   const typeIds = new Set(boards.flatMap((board) => board.connections.map((edge) => edge.typeId)));
   return transferSchema.parse({
     format: 'trace-transfer',
@@ -115,6 +117,7 @@ const characterKey = (c: Database['characters'][number]) =>
     c.kind,
     c.witness,
     c.suspect,
+    c.victim || false,
     Object.entries(c.answers || {}).sort(([a], [b]) => a.localeCompare(b)),
     c.portrait
       ? [
@@ -132,10 +135,11 @@ const boardKey = (c: Database['boards'][number]) =>
   JSON.stringify([
     c.name,
     c.description,
+    c.investigation || null,
+    c.creatorFolderIds || [],
     c.characterIds,
     Object.entries(c.layout || {}).sort(([a], [b]) => a.localeCompare(b)),
     c.connections.map((e) => [e.sourceId, e.targetId, e.typeId, e.directed, e.notes]),
-    c.investigation || null,
   ]);
 
 export function mergeTransfer(
@@ -238,13 +242,11 @@ export function mergeTransfer(
     data.boards,
     incoming.boards.map((board) => ({
       ...board,
+      ...(board.creatorFolderIds
+        ? { creatorFolderIds: board.creatorFolderIds.flatMap((id) => folderMap.get(id) || []) }
+        : {}),
       ...(board.investigation
-        ? {
-          investigation: remapLegacyInvestigation(
-            board.investigation,
-            (id) => characterMap.get(id) || id,
-          ),
-        }
+        ? { investigation: remapPlan(board.investigation, (id) => characterMap.get(id) || id) }
         : {}),
       characterIds: board.characterIds.map((id) => characterMap.get(id)!),
       ...(board.layout
@@ -254,6 +256,24 @@ export function mergeTransfer(
                 characterMap.get(id)!,
                 {
                   ...entry,
+                  ...(entry.generated
+                    ? {
+                      generated: {
+                        ...entry.generated,
+                        parentId:
+                          entry.generated.parentId === '__culprit__'
+                            ? '__culprit__'
+                            : characterMap.get(entry.generated.parentId)!,
+                        ...(entry.generated.parentIds
+                          ? {
+                            parentIds: entry.generated.parentIds.map((parent) =>
+                              parent === '__culprit__' ? parent : characterMap.get(parent)!,
+                            ),
+                          }
+                          : {}),
+                      },
+                    }
+                    : {}),
                   ...(entry.parentId
                     ? {
                         parentId:
@@ -261,6 +281,13 @@ export function mergeTransfer(
                             ? entry.parentId
                             : characterMap.get(entry.parentId)!,
                       }
+                    : {}),
+                  ...(entry.parentIds
+                    ? {
+                      parentIds: entry.parentIds.map((parent) =>
+                        parent === '__culprit__' ? parent : characterMap.get(parent)!,
+                      ),
+                    }
                     : {}),
                 },
               ]),

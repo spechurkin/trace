@@ -5,7 +5,10 @@ import { demoDatabase } from '../../src/demo';
 import { setLocale, tr } from '../../shared/i18n';
 import { databaseSchema, emptyDatabase } from '../../shared/model';
 import { createStoriesTransfer } from '../../shared/transfer';
+import { messages as creatorMessages } from '../../modules/investigation-creator/messages';
 import { emptyPlan } from '../../shared/legacy-investigation';
+import { convergingInvestigation, convergingNames } from '../fixtures/converging';
+import { parentsOf } from '../../shared/investigation';
 
 let app: ElectronApplication, page: Page, directory: string;
 const root = process.cwd();
@@ -66,6 +69,122 @@ test.afterEach(async () => {
 });
 
 for (const locale of ['en', 'ru'] as const) {
+  test(`bulk deletion is scoped to visible library objects and persists in ${locale}`, async () => {
+    setLocale(locale);
+    const data = demoDatabase();
+    data.boards.push({ ...structuredClone(data.boards[0]), id: 'second' });
+    const categories = [
+      { kind: 'person', tab: 'navigation.characters' },
+      { kind: 'evidence', tab: 'trace.evidenceTab' },
+      { kind: 'location', tab: 'trace.locations' },
+      { kind: 'event', tab: 'trace.events' },
+    ] as const;
+    const targets = categories.map((category) => {
+      const nodes = data.characters.filter((node) => node.kind === category.kind).slice(0, 2);
+      const folderId = `bulk-${category.kind}`;
+      const folderName = `Bulk ${category.kind}`;
+      data.folders.push({
+        id: folderId,
+        name: folderName,
+        parentId: category.kind,
+        kind: category.kind,
+      });
+      nodes.forEach((node, index) => {
+        node.folderId = folderId;
+        node.name = `Batch ${category.kind} ${index + 1}`;
+      });
+      return { ...category, nodes, folderId, folderName };
+    });
+    await launch(locale, data);
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await expect(page.locator('.library-selection-toolbar')).toHaveCount(0);
+    await expect(page.locator('.character-select')).toHaveCount(0);
+    const selectTab = async (tab: (typeof categories)[number]['tab']) => {
+      await page
+        .locator('.rail')
+        .getByRole('button', { name: tr(tab), exact: true })
+        .click();
+    };
+    const removed = new Set<string>();
+    for (const target of targets) {
+      await selectTab(target.tab);
+      const toolbar = page.getByRole('group', { name: tr('characters.selectionLabel') });
+      await page
+        .getByRole('checkbox', {
+          name: tr('characters.selectLabel', target.nodes[0].name),
+          exact: true,
+        })
+        .check();
+      await expect(toolbar).toContainText(tr('characters.selectedCount', 1));
+      await toolbar
+        .getByRole('button', { name: tr('actions.clearSelection'), exact: true })
+        .click();
+      await expect(page.locator('.character-select:checked')).toHaveCount(0);
+
+      await toolbar
+        .getByRole('button', { name: tr('characters.selectAllVisible'), exact: true })
+        .click();
+      await page
+        .getByRole('textbox', { name: tr('characters.searchLabel') })
+        .fill(target.nodes[0].name);
+      await expect(toolbar).toContainText(tr('characters.selectedCount', 0));
+      await toolbar
+        .getByRole('button', { name: tr('characters.selectAllVisible'), exact: true })
+        .click();
+      await expect(page.locator('.character-select:checked')).toHaveCount(1);
+      await page.getByRole('textbox', { name: tr('characters.searchLabel') }).fill('');
+      await expect(page.locator('.character-select:checked')).toHaveCount(0);
+
+      // Match the leaf name without depending on translated ancestor names.
+      await page
+        .locator('.folder-navigation')
+        .filter({ has: page.locator('span', { hasText: target.folderName }) })
+        .click();
+      await expect(page.locator('.character-card')).toHaveCount(2);
+      await toolbar
+        .getByRole('button', { name: tr('characters.selectAllVisible'), exact: true })
+        .click();
+      await selectTab(target.kind === 'person' ? 'trace.evidenceTab' : 'navigation.characters');
+      await selectTab(target.tab);
+      await expect(page.locator('.character-select:checked')).toHaveCount(0);
+      await toolbar
+        .getByRole('button', { name: tr('characters.selectAllVisible'), exact: true })
+        .click();
+      await toolbar
+        .getByRole('button', { name: tr('characters.deleteSelected', 2), exact: true })
+        .click();
+      let dialog = page.getByRole('dialog');
+      await expect(dialog).toContainText(tr('characters.deleteSelectedMessage', 2));
+      await dialog.getByRole('button', { name: tr('actions.cancel'), exact: true }).click();
+      expect((await persisted()).characters).toEqual(
+        data.characters.filter((node) => !removed.has(node.id)),
+      );
+      await expect(page.locator('.character-select:checked')).toHaveCount(2);
+      await toolbar
+        .getByRole('button', { name: tr('characters.deleteSelected', 2), exact: true })
+        .click();
+      dialog = page.getByRole('dialog');
+      await dialog.getByRole('button', { name: tr('actions.delete'), exact: true }).click();
+      target.nodes.forEach((node) => removed.add(node.id));
+      await expect(page.locator('.character-card')).toHaveCount(0);
+      const saved = await persisted();
+      expect(saved.characters).toEqual(data.characters.filter((node) => !removed.has(node.id)));
+      expect(saved.folders).toEqual(data.folders);
+      for (const board of saved.boards) {
+        expect(board.characterIds).toEqual(
+          data.boards[0].characterIds.filter((id) => !removed.has(id)),
+        );
+        for (const id of removed) expect(board.layout).not.toHaveProperty(id);
+      }
+    }
+    await app.close();
+    await reopen();
+    expect((await persisted()).characters).toEqual(
+      data.characters.filter((node) => !removed.has(node.id)),
+    );
+    await expect(page.locator('.library-selection-toolbar')).toHaveCount(0);
+  });
+
   test(`folders stay isolated by category through creation, editing and reopen in ${locale}`, async () => {
     await launch(locale);
     const categories = [
@@ -235,7 +354,10 @@ test('loads the dead witness example from onboarding with all guiding answers an
     .getByRole('button', { name: tr('actions.cancel'), exact: true })
     .click();
   await page.locator('[data-node-id="__culprit__"]').click();
-  await page.getByRole('button', { name: tr('actions.clearSelection'), exact: true }).click();
+  await expect(page.locator('.investigation-creator-mode')).toBeVisible();
+  await page
+    .getByRole('button', { name: creatorMessages('ru')('backToBoard'), exact: true })
+    .click();
   await page.getByRole('button', { name: tr('trace.story'), exact: true }).click();
   await expect(page.locator('.board-story p')).toHaveText(data.boards[0].description.split('\n'));
   await page.screenshot({ path: path.join(root, 'test-results/dead-witness-board.png') });
@@ -306,7 +428,8 @@ test('create a board, all node types, guiding answers and both person roles with
   await expect(page.locator('.diagram-node')).toHaveCount(5);
   await expect(page.locator('.diagram-edge')).toHaveCount(4);
   await page.locator('[data-node-id="__culprit__"]').click();
-  await expect(page.locator('.inspector')).toContainText('Fixed at the center');
+  await expect(page.locator('.investigation-creator-mode')).toBeVisible();
+  await expect(page.locator('.editor-layout')).toHaveCount(0);
 });
 
 for (const { height, zoom } of [
@@ -384,7 +507,18 @@ test('branch editing updates the tree and automatic colors, then changing roles 
   await page.locator('[data-node-id="door"]').click();
   await page.locator('.inspector').getByRole('button', { name: 'Connect', exact: true }).click();
   const dialog = page.getByRole('dialog');
-  await dialog.getByLabel('Attach to', { exact: false }).selectOption('celine');
+  await dialog
+    .getByRole('checkbox', {
+      name: demoDatabase().characters.find((n) => n.id === 'apartment')!.name,
+      exact: true,
+    })
+    .uncheck();
+  await dialog
+    .getByRole('checkbox', {
+      name: demoDatabase().characters.find((n) => n.id === 'celine')!.name,
+      exact: true,
+    })
+    .check();
   await dialog.getByRole('button', { name: 'Connect', exact: true }).click();
   expect((await persisted()).boards[0].layout!.door.parentId).toBe('celine');
   await page.locator('[data-node-id="domye"]').click();
@@ -394,8 +528,78 @@ test('branch editing updates the tree and automatic colors, then changing roles 
   await persisted();
   await expect(
     page.locator('.diagram-edge').filter({ has: page.locator('path[stroke="#4C9A2A"]') }),
-  ).toHaveCount(4);
+  ).toHaveCount(3);
+  await expect(
+    page.locator('.diagram-edge').filter({ has: page.locator('path[stroke="#64748B"]') }),
+  ).toHaveCount(2);
 });
+
+for (const locale of ['en', 'ru'] as const) {
+  test(`three clues converge on one station through assembly, editing and restart in ${locale}`, async () => {
+    setLocale(locale);
+    const data = convergingInvestigation(),
+      t = creatorMessages(locale);
+    await launch(locale, data);
+    await page.locator('[data-node-id="__culprit__"]').click();
+    const mode = page.locator('.investigation-creator-mode');
+    await mode
+      .locator('footer')
+      .getByRole('button', { name: t('assemble'), exact: true })
+      .click();
+    await expect(mode).toHaveCount(0);
+    await expect(page.locator('[data-node-id="station"]')).toHaveCount(1);
+    const incoming = () =>
+      page.locator('.diagram-edge title').filter({ hasText: `→ ${convergingNames.station}:` });
+    await expect(incoming()).toHaveCount(3);
+    expect(parentsOf((await persisted()).boards[0], 'station').sort()).toEqual([
+      'invoices',
+      'navigator',
+      'phone',
+    ]);
+    await page.screenshot({ path: `test-results/converging-station-${locale}.png` });
+    await page.locator('[data-node-id="station"]').press('Enter');
+    await page
+      .locator('.inspector')
+      .getByRole('button', { name: tr('actions.connect'), exact: true })
+      .click();
+    let dialog = page.getByRole('dialog');
+    await expect(
+      dialog.getByRole('checkbox', { name: convergingNames.station, exact: true }),
+    ).toHaveCount(0);
+    await expect(
+      dialog.getByRole('checkbox', { name: convergingNames.records, exact: true }),
+    ).toHaveCount(1);
+    await dialog.getByRole('checkbox', { name: convergingNames.invoices, exact: true }).uncheck();
+    await dialog
+      .getByRole('textbox', { name: tr('members.searchLabel'), exact: true })
+      .fill(convergingNames.phone.slice(0, 4));
+    await expect(
+      dialog.getByRole('checkbox', { name: convergingNames.phone, exact: true }),
+    ).toBeChecked();
+    await dialog.getByRole('button', { name: tr('actions.connect'), exact: true }).click();
+    await expect(incoming()).toHaveCount(2);
+    expect(parentsOf((await persisted()).boards[0], 'station').sort()).toEqual([
+      'navigator',
+      'phone',
+    ]);
+    await app.close();
+    await reopen();
+    await expect(incoming()).toHaveCount(2);
+    await page.locator('[data-node-id="station"]').press('Enter');
+    await page
+      .locator('.inspector')
+      .getByRole('button', { name: tr('actions.connect'), exact: true })
+      .click();
+    dialog = page.getByRole('dialog');
+    await expect(
+      dialog.getByRole('checkbox', { name: convergingNames.navigator, exact: true }),
+    ).toBeChecked();
+    await dialog.getByRole('checkbox', { name: convergingNames.invoices, exact: true }).check();
+    await dialog.getByRole('button', { name: tr('actions.connect'), exact: true }).click();
+    await expect(incoming()).toHaveCount(3);
+    expect(parentsOf((await persisted()).boards[0], 'station')).toHaveLength(3);
+  });
+}
 
 test('localized tabs, role filters, screenshots and SVG/PNG exports work in Electron', async () => {
   setLocale('en');
@@ -467,6 +671,51 @@ test('localized tabs, role filters, screenshots and SVG/PNG exports work in Elec
   await page.screenshot({ path: path.join(root, 'docs/screenshots/trace-evidence-ru.png') });
 });
 
+test('short captions allow straight arrows and editing a caption restores the required detour', async () => {
+  const data = emptyDatabase();
+  data.characters = ['a', 'b', 'clue'].map((id, index) => ({
+    id, name: ['Source', 'Target', 'Clue'][index], kind: 'evidence',
+    color: '#D93846', notes: '', folderId: null,
+  }));
+  data.boards = [{
+    id: 'routing', name: 'Caption routing', description: '',
+    characterIds: ['a', 'b', 'clue'], connections: [],
+    layout: {
+      a: { x: 220, y: -100, parentId: '__culprit__' },
+      b: { x: 700, y: 100, parentId: 'a' },
+      clue: { x: 520, y: -54, parentId: 'a' },
+    },
+  }];
+  data.activeBoardId = 'routing';
+  await launch('en', data);
+  const arrow = page.locator('[data-source-id="a"][data-target-id="b"] > path').first();
+  await expect(arrow).toHaveAttribute('d', /^M [\d. -]+ L [\d. -]+$/);
+  const straight = await arrow.getAttribute('d');
+  await page.screenshot({ path: 'test-results/caption-straight.png' });
+
+  await app.evaluate(({ dialog }) => {
+    dialog.showSaveDialog = async () => ({
+      canceled: false, filePath: process.env.TRACE_DATA_DIR + '/straight.svg',
+    });
+  });
+  await page.getByRole('button', { name: tr('actions.export'), exact: true }).click();
+  await page.getByRole('button', { name: new RegExp('SVG') }).click();
+  await expect(page.locator('.toast')).toContainText('SVG');
+  expect(await readFile(path.join(directory, 'straight.svg'), 'utf8')).toContain(`d="${straight}"`);
+
+  await page.locator('[data-node-id="clue"]').click();
+  await page.locator('.inspector').getByRole('button', { name: 'Edit', exact: true }).click();
+  await page.getByRole('dialog').getByLabel('Name / title', { exact: true }).fill('WWWWWWWWWWWW');
+  await page.getByRole('dialog').getByRole('button', { name: 'Save changes', exact: true }).click();
+  await expect(arrow).not.toHaveAttribute('d', straight!);
+  await page.screenshot({ path: 'test-results/caption-detour.png' });
+  await persisted();
+  await app.close();
+  await reopen();
+  await expect(page.locator('[data-source-id="a"][data-target-id="b"] > path').first())
+    .not.toHaveAttribute('d', straight!);
+});
+
 test('portrait editing and board renaming preserve image metadata, answers and locked layout', async () => {
   setLocale('en');
   const data = demoDatabase();
@@ -488,6 +737,55 @@ test('portrait editing and board renaming preserve image metadata, answers and l
   expect(saved.boards[0].layout?.domye.locked).toBe(true);
   expect(saved.characters[0].answers?.alibi).toBe('Platform 2');
 });
+
+for (const [version, field] of [
+  [3, 'circles'],
+  [4, 'clubs'],
+] as const) {
+  test(`opens version ${version} ${field} JSON and saves boards without losing case content`, async () => {
+    const current = demoDatabase();
+    await launch('en', current);
+    await app.close();
+    const { boards, activeBoardId, ...rest } = current;
+    const legacy = {
+      ...rest,
+      version,
+      [field]: boards,
+      [field === 'clubs' ? 'activeClubId' : 'activeCircleId']: activeBoardId,
+    };
+    await writeFile(path.join(directory, 'library.json'), JSON.stringify(legacy));
+    await reopen();
+    await expect(page.locator('.board-list-item')).toHaveCount(1);
+    await expect(page.locator('[data-node-id="domye"]')).toBeVisible();
+    await page.locator('.board-list-item').first().click();
+    await expect
+      .poll(
+        async () =>
+          JSON.parse(await readFile(path.join(directory, 'library.json'), 'utf8')).version,
+      )
+      .toBe(5);
+    const saved = JSON.parse(await readFile(path.join(directory, 'library.json'), 'utf8'));
+    expect(saved).toEqual(current);
+    expect(saved).not.toHaveProperty('clubs');
+    expect(saved).not.toHaveProperty('circles');
+    expect(saved).not.toHaveProperty('activeClubId');
+    expect(saved).not.toHaveProperty('activeCircleId');
+    expect(
+      JSON.parse(
+        await readFile(
+          path.join(
+            directory,
+            (await readdir(directory)).find((file) => file.includes('.pre-migration-'))!,
+          ),
+          'utf8',
+        ),
+      ),
+    ).toEqual(legacy);
+    await app.close();
+    await reopen();
+    expect(await persisted()).toEqual(current);
+  });
+}
 
 for (const version of [4, 5]) {
   test(`opens version ${version} libraries automatically and retains investigation data after editing and reopening`, async () => {

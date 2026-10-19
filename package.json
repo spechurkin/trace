@@ -18,14 +18,14 @@
     "test": "vitest run",
     "test:desktop": "npm run build && playwright test",
     "test:packaged": "node scripts/test-packaged.mjs",
-    "test:themes": "npm run build && playwright test tests/desktop/themes.spec.ts",
     "test:stress": "vitest run tests/stress.test.ts",
     "test:audit:desktop": "npm run build && playwright test --config playwright.audit.config.ts",
     "test:audit:browser": "npm run build && playwright test --config playwright.browser.config.ts",
     "dist": "npm run build && electron-builder",
     "dist:win": "npm run build && electron-builder --win",
     "dist:mac": "npm run build && electron-builder --mac",
-    "dist:linux": "npm run build && electron-builder --linux"
+    "dist:linux": "npm run build && electron-builder --linux",
+    "test:themes": "npm run build && playwright test tests/desktop/themes.spec.ts"
   },
   "dependencies": {
     "@fontsource-variable/manrope": "5.3.0",
@@ -61,8 +61,8 @@
       "dist/**/*",
       "dist-electron/**/*",
       "resources/icon.png",
-      "resources/themes/**/*",
-      "package.json"
+      "package.json",
+      "resources/themes/**/*"
     ],
     "asar": true,
     "npmRebuild": false,

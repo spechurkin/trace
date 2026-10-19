@@ -7,7 +7,7 @@ import { defaultPortraitTransform, readPortrait } from './portrait';
 import { PortraitEditor } from './PortraitEditor';
 import { folderEntries, folderKindOf, folderSubtree } from '../shared/folders';
 import { sortByName } from './sorting';
-import { BRANCH_COLORS, kindOf, type NodeKind, nodeLabel, questionKeys } from '../shared/investigation';
+import { BRANCH_COLORS, branchOf, kindOf, type NodeKind, nodeLabel, questionKeys } from '../shared/investigation';
 
 type Actions = { onClose: () => void };
 
@@ -55,9 +55,10 @@ export function CharacterForm({
   const [kind, setKind] = useState<NodeKind>(character ? kindOf(character) : initialKind);
   const [witness, setWitness] = useState(character?.witness || false);
   const [suspect, setSuspect] = useState(character?.suspect !== false);
+  const [victim, setVictim] = useState(character?.victim || false);
   const [answers, setAnswers] = useState(character?.answers || {});
   const [name, setName] = useState(character?.name || '');
-  const color = BRANCH_COLORS[kind === 'person' ? (suspect ? 'suspect' : 'witness') : kind];
+  const color = BRANCH_COLORS[branchOf({ kind, suspect, victim })];
   const [image, setImage] = useState(character?.image);
   const [portrait, setPortrait] = useState(character?.portrait);
   const [editingPortrait, setEditingPortrait] = useState<Portrait | null>(null);
@@ -87,7 +88,7 @@ export function CharacterForm({
   const submit = (event: FormEvent) => {
     event.preventDefault();
     if (reading) return;
-    if (kind === 'person' && !witness && !suspect) {
+    if (kind === 'person' && !witness && !suspect && !victim) {
       setError(tr('trace.rolesRequired'));
       return;
     }
@@ -99,10 +100,11 @@ export function CharacterForm({
       {
         id: character?.id || crypto.randomUUID(),
         name: name.trim(),
-        color: BRANCH_COLORS[kind === 'person' ? (suspect ? 'suspect' : 'witness') : kind],
+        color,
         kind,
         witness,
         suspect,
+        victim,
         answers,
         image,
         portrait,
@@ -161,6 +163,14 @@ export function CharacterForm({
                 onChange={(e) => setSuspect(e.target.checked)}
               />
               {tr('trace.suspect')}
+            </label>
+            <label className="checkbox-row">
+              <input
+                type="checkbox"
+                checked={victim}
+                onChange={(e) => setVictim(e.target.checked)}
+              />
+              {tr('trace.victim')}
             </label>
           </div>
           <p className="field-hint">{tr('trace.rolesHint')}</p>

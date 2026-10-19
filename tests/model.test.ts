@@ -2,7 +2,8 @@ import { russianText } from './russian-fixtures';
 import { describe, expect, it } from 'vitest';
 import { databaseSchema, deleteCharacter, deleteCharacterFolder, removeFromBoard } from '../shared/model';
 import { demoDatabase } from './original-demo';
-import { boardBounds, edgeGeometry, radialPositions } from '../src/geometry';
+import { demoDatabase as investigationDatabase } from '../src/demo';
+import { boardBounds, defaultBoardPositions, edgeGeometry } from '../src/geometry';
 
 describe('character folders', () => {
   it('opens original libraries without changing characters, portraits or boards', () => {
@@ -60,6 +61,24 @@ describe('character folders', () => {
 });
 
 describe('library integrity', () => {
+  it('migrates version 4 without losing the investigation plan, tree, locks or node answers', () => {
+    const current = investigationDatabase();
+    const { boards, activeBoardId, ...rest } = current;
+    const previous = { ...rest, version: 4, clubs: boards, activeClubId: activeBoardId };
+    const before = structuredClone(previous);
+    const migrated = databaseSchema.parse(previous);
+    expect(migrated).toEqual(current);
+    expect(previous).toEqual(before);
+    expect(JSON.stringify(migrated)).not.toMatch(/"(?:clubs|activeClubId|circles|activeCircleId)"/);
+    expect(databaseSchema.safeParse({ ...previous, boards }).success).toBe(false);
+    expect(databaseSchema.safeParse({ ...previous, activeBoardId }).success).toBe(false);
+    expect(databaseSchema.safeParse({ ...previous, circles: boards }).success).toBe(false);
+    expect(databaseSchema.safeParse({ ...previous, activeCircleId: activeBoardId }).success).toBe(
+      false,
+    );
+    expect(databaseSchema.safeParse({ ...previous, activeClubId: 'missing' }).success).toBe(false);
+    expect(databaseSchema.safeParse({ ...previous, version: 5 }).success).toBe(false);
+  });
   it.each([1, 2, 3])('migrates legacy version %i fields without losing board data', (version) => {
     const current = demoDatabase();
     const { boards, activeBoardId, folders, ...rest } = current;
@@ -141,7 +160,7 @@ describe('library integrity', () => {
 describe('diagram geometry', () => {
   it('expands crowded boards and retains room for the entire exported legend', () => {
     const ids = Array.from({ length: 60 }, (_, index) => String(index));
-    const positions = radialPositions(ids);
+    const positions = defaultBoardPositions(ids);
     const first = positions.get('0')!,
       second = positions.get('1')!;
     expect(Math.hypot(first.x - second.x, first.y - second.y)).toBeGreaterThan(100);
@@ -161,7 +180,7 @@ describe('diagram geometry', () => {
     ).toBe(true);
   });
   it('places nodes at equal distance around the ring', () => {
-    const positions = radialPositions(['a', 'b', 'c', 'd']);
+    const positions = defaultBoardPositions(['a', 'b', 'c', 'd']);
     const radii = [...positions.values()].map((p) => Math.hypot(p.x - 460, p.y - 410));
     expect(new Set(radii.map((r) => Math.round(r))).size).toBe(1);
     expect(positions.get('a')?.y).toBeLessThan(410);
@@ -176,7 +195,7 @@ describe('diagram geometry', () => {
       notes: '',
     };
     const b = { ...a, id: 'b', sourceId: 'mira', targetId: 'nora' };
-    const positions = radialPositions(['nora', 'mira']);
+    const positions = defaultBoardPositions(['nora', 'mira']);
     const first = edgeGeometry(a, [a, b], positions),
       second = edgeGeometry(b, [a, b], positions);
     expect(first.label.x).not.toBe(second.label.x);

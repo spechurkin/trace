@@ -83,6 +83,11 @@ export function BoardInspector({
             <div className="role-badges">
               {kindOf(node) === 'person' ? (
                 <>
+                  {node.victim && (
+                    <span className="pill" style={{ color: BRANCH_COLORS.victim }}>
+                      {tr('trace.victim')}
+                    </span>
+                  )}
                   {node.suspect !== false && (
                     <span className="pill" style={{ color: BRANCH_COLORS.suspect }}>
                       {tr('trace.suspect')}

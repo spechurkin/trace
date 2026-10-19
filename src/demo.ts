@@ -3,6 +3,7 @@ import { type Character, type Database, emptyDatabase } from '../shared/model';
 import { BRANCH_COLORS, branchOf, CULPRIT, type NodeKind, questionKeys } from '../shared/investigation';
 import english from './demo-content/en.json' with { type: 'json' };
 import russian from './demo-content/ru.json' with { type: 'json' };
+import { demoCreatorPlan } from './demo-creator';
 
 // Links describe leads, not an accusation of murder. Generated text becomes user-owned.
 const nodes: {
@@ -13,10 +14,20 @@ const nodes: {
   y: number;
   witness?: boolean;
   suspect?: boolean;
+  victim?: boolean;
   locked?: boolean;
 }[] = [
   { id: 'domye', kind: 'person', parent: CULPRIT, x: 160, y: 210, witness: true, suspect: true },
-  { id: 'valk', kind: 'person', parent: CULPRIT, x: 640, y: 130, witness: true, suspect: true },
+  {
+    id: 'valk',
+    kind: 'person',
+    parent: CULPRIT,
+    x: 640,
+    y: 130,
+    witness: true,
+    suspect: true,
+    victim: true,
+  },
   { id: 'loro', kind: 'person', parent: CULPRIT, x: 160, y: 610, witness: true, suspect: true },
   { id: 'fall', kind: 'event', parent: CULPRIT, x: 770, y: 540 },
   { id: 'oldCase', kind: 'event', parent: CULPRIT, x: 550, y: 740 },
@@ -42,7 +53,7 @@ const nodes: {
   { id: 'courtyard', kind: 'location', parent: 'body', x: 1210, y: 460, locked: true },
   { id: 'discovery', kind: 'event', parent: 'courtyard', x: 1210, y: 650 },
   { id: 'remi', kind: 'person', parent: 'fall', x: 990, y: 740, witness: true },
-  { id: 'mathias', kind: 'person', parent: 'oldCase', x: 420, y: 940, witness: true },
+  { id: 'mathias', kind: 'person', parent: 'oldCase', x: 420, y: 940, witness: true, victim: true },
   { id: 'precinct', kind: 'location', parent: 'mathias', x: 180, y: 1080, locked: true },
   { id: 'journal', kind: 'evidence', parent: 'oldCase', x: 650, y: 940 },
   { id: 'report', kind: 'evidence', parent: 'journal', x: 890, y: 1080 },
@@ -61,6 +72,7 @@ export function demoDatabase(): Database {
       folderId: spec.kind,
       witness: spec.witness ?? false,
       suspect: spec.suspect ?? false,
+      victim: spec.victim ?? false,
       color: BRANCH_COLORS.evidence,
       answers: Object.fromEntries(
         questionKeys[spec.kind].map((key, index) => [key, text.answers[index]]),
@@ -85,6 +97,7 @@ export function demoDatabase(): Database {
         description: content.description,
         characterIds: characters.map((node) => node.id),
         connections: [],
+        investigation: demoCreatorPlan(characters),
         layout: Object.fromEntries(
           nodes.map(({ id, x, y, parent, locked }) => [
             id,

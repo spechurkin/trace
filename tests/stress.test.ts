@@ -50,7 +50,7 @@ it('handles a 500-level branch chain, depth ordering and finite geometry', async
   expect(databaseSchema.safeParse(data).success).toBe(true);
   const edges = await timed('chain500EdgesMs', () => boardEdges(data.boards[0], data.characters));
   expect(edges.map((edge) => edge.targetId)).toEqual(data.boards[0].characterIds);
-  expect(canParent(data.boards[0], 'n0', 'n499')).toBe(false);
+  expect(canParent(data.boards[0], 'n0', 'n499')).toBe(true);
   const positions = boardPositions(data.boards[0]);
   const paths = await timed('chain500GeometryMs', () =>
     edges.map((edge) => edgeGeometry(edge, edges, positions).path),

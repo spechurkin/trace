@@ -1,4 +1,4 @@
-import type { Board, Connection } from '../shared/model';
+import type { Board } from '../shared/model';
 import { CULPRIT } from '../shared/investigation';
 import { getLocale } from '../shared/i18n';
 
@@ -10,7 +10,7 @@ export function boardRadius(count: number) {
   return Math.max(210, Math.min(278, 196 + count * 10), count * 19);
 }
 
-export function radialPositions(ids: string[]): Map<string, Point> {
+export function defaultBoardPositions(ids: string[]): Map<string, Point> {
   const radius = boardRadius(ids.length);
   return new Map(
     ids.map((id, index) => {
@@ -24,7 +24,7 @@ export function radialPositions(ids: string[]): Map<string, Point> {
 }
 
 export function boardPositions(board: Board): Map<string, Point> {
-  const positions = radialPositions(board.characterIds);
+  const positions = defaultBoardPositions(board.characterIds);
   for (const id of board.characterIds) {
     const placement = board.layout?.[id];
     if (placement?.x !== undefined && placement?.y !== undefined)
@@ -49,40 +49,7 @@ export function boardBounds(board: Board, legendCount = 0) {
   };
 }
 
-export function edgeGeometry(edge: Connection, edges: Connection[], positions: Map<string, Point>) {
-  const start = positions.get(edge.sourceId)!;
-  const end = positions.get(edge.targetId)!;
-  const pair = [edge.sourceId, edge.targetId].sort();
-  const parallel = edges.filter(
-    (e) => [e.sourceId, e.targetId].sort().join('|') === pair.join('|'),
-  );
-  const lane = parallel.findIndex((e) => e.id === edge.id) - (parallel.length - 1) / 2;
-  // Use a canonical orientation so reversed arrows occupy distinct lanes.
-  const orientation = edge.sourceId === pair[0] ? 1 : -1;
-  const dx = end.x - start.x,
-    dy = end.y - start.y;
-  const length = Math.hypot(dx, dy) || 1;
-  const nx = -dy / length,
-    ny = dx / length;
-  const bend = lane * 48 * orientation;
-  const control = { x: (start.x + end.x) / 2 + nx * bend, y: (start.y + end.y) / 2 + ny * bend };
-  const trimmed = (point: Point, toward: Point, radius: number) => {
-    const length = Math.hypot(toward.x - point.x, toward.y - point.y) || 1;
-    return {
-      x: point.x + ((toward.x - point.x) / length) * radius,
-      y: point.y + ((toward.y - point.y) / length) * radius,
-    };
-  };
-  const a = trimmed(start, control, NODE_RADIUS + 5);
-  const b = trimmed(end, control, NODE_RADIUS + (edge.directed ? 14 : 5));
-  return {
-    path: `M ${a.x} ${a.y} Q ${control.x} ${control.y} ${b.x} ${b.y}`,
-    label: {
-      x: a.x * 0.25 + control.x * 0.5 + b.x * 0.25,
-      y: a.y * 0.25 + control.y * 0.5 + b.y * 0.25,
-    },
-  };
-}
+export { edgeGeometry } from './connection-geometry';
 
 export function initials(name: string): string {
   return name

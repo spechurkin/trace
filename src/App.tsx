@@ -40,8 +40,10 @@ import {
   BOARD_CREATION_LIMIT,
   type Character,
   type CharacterFolder,
+  databaseSchema,
   deleteCharacter,
   deleteCharacterFolder,
+  deleteCharacters,
   removeFromBoard,
   upsertBoard,
 } from '../shared/model';
@@ -59,11 +61,21 @@ import Diagram from './Diagram';
 import { demoDatabase } from './demo';
 import { storage } from './storage';
 import { useLibrary } from './useLibrary';
+import {
+  boardEdges,
+  CULPRIT,
+  investigationTypes,
+  kindOf,
+  type NodeKind,
+  retainMembers,
+} from '../shared/investigation';
 import { UpdateSettings, useUpdates } from './Updates';
-import { boardEdges, investigationTypes, kindOf, type NodeKind, retainMembers } from '../shared/investigation';
 import { BranchForm } from './InvestigationForms';
 import { BoardInspector } from './BoardInspector';
 import { ThemeSettings } from './themes/ThemeSettings';
+import { InvestigationCreator } from './InvestigationCreator';
+import { applyCreatorDiagram } from './creator-diagram';
+import { messages as creatorMessages } from '../modules/investigation-creator/messages';
 
 type View = 'boards' | 'characters' | 'evidence' | 'locations' | 'events' | 'settings';
 type Editor = {
@@ -117,6 +129,10 @@ export default function App() {
           ? 'event'
           : 'person';
   const [editor, setEditor] = useState<Editor | null>(null);
+  const [creator, setCreator] = useState<'create' | 'audit' | null>(null);
+  const [createUsingAssistant, setCreateUsingAssistant] = useState(false);
+  const creatorText = creatorMessages(locale);
+  const closeCreator = useCallback(() => setCreator(null), []);
   const [confirmation, setConfirmation] = useState<Confirmation | null>(null);
   const [selectedCharacter, setSelectedCharacter] = useState<string>();
   const [selectedEdge, setSelectedEdge] = useState<string>();
@@ -167,7 +183,10 @@ export default function App() {
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState('');
   const board = data?.boards.find((c) => c.id === data.activeBoardId) || data?.boards[0];
-  const closeEditor = useCallback(() => setEditor(null), []);
+  const closeEditor = useCallback(() => {
+    setEditor(null);
+    setCreateUsingAssistant(false);
+  }, []);
   const clearSelection = () => {
     setSelectedCharacter(undefined);
     setSelectedEdge(undefined);
@@ -228,13 +247,14 @@ export default function App() {
       }));
   };
   const changeView = (next: View) => {
+    setCreator(null);
     setView(next);
     setSearch('');
     setExportMenu(false);
     setBoardMenu(false);
   };
   const libraryView = ['characters', 'evidence', 'locations', 'events'].includes(view);
-  const [roleFilter, setRoleFilter] = useState<'all' | 'witness' | 'suspect'>('all');
+  const [roleFilter, setRoleFilter] = useState<'all' | 'witness' | 'suspect' | 'victim'>('all');
   const newCharacter = () => setEditor({ kind: 'character', nodeKind: activeKind });
   const newFolder = () =>
     setEditor({
@@ -310,6 +330,10 @@ export default function App() {
     }
     setView('boards');
     closeEditor();
+    if (createUsingAssistant) {
+      setCreator('create');
+      setCreateUsingAssistant(false);
+    }
   };
   const askDeleteCharacter = (character: Character) =>
     setConfirmation({
@@ -320,6 +344,17 @@ export default function App() {
         clearSelection();
       },
     });
+  const askDeleteCharacters = (characterIds: string[]) => {
+    if (!characterIds.length) return;
+    setConfirmation({
+      title: tr('characters.deleteSelectedTitle'),
+      text: tr('characters.deleteSelectedMessage', characterIds.length),
+      action: () => {
+        commit((data) => deleteCharacters(data, characterIds));
+        clearSelection();
+      },
+    });
+  };
   const importBackup = async () => {
     setBusy(true);
     try {
@@ -379,6 +414,11 @@ export default function App() {
     }
   };
   const pickCharacter = (id: string) => {
+    if (id === CULPRIT && !linking) {
+      setCreator(board?.characterIds.length ? 'audit' : 'create');
+      clearSelection();
+      return;
+    }
     if (linking && selectedCharacter && selectedCharacter !== id) {
       setEditor({ kind: 'connection', sourceId: selectedCharacter, targetId: id });
       setLinking(false);
@@ -605,7 +645,7 @@ export default function App() {
             <p>{subtitle}</p>
           </div>
           <div className="header-actions">
-            {view === 'boards' && board && (
+            {view === 'boards' && board && !creator && (
               <>
                 <div className="dropdown-wrap">
                   <button
@@ -836,7 +876,7 @@ export default function App() {
           </div>
         )}
 
-        {view === 'boards' && (
+        {view === 'boards' && !creator && (
           <div className="editor-layout">
             <section
               className={`canvas ${linking ? 'linking' : ''}`}
@@ -912,7 +952,10 @@ export default function App() {
                         hiddenTypes={hiddenTypes}
                         showLabels={labels}
                         onCharacter={pickCharacter}
-                        onEdge={(id) => pickCharacter(id.replace(/^branch-/, ''))}
+                        onEdge={(id) => {
+                          const edge = connections.find((edge) => edge.id === id);
+                          if (edge) pickCharacter(edge.targetId);
+                        }}
                         onBackground={() => {
                           if (!linking) clearSelection();
                         }}
@@ -993,6 +1036,18 @@ export default function App() {
                       {tr('demo.explore')}
                     </button>
                   )}
+                  {!board && (
+                    <button
+                      className="button secondary"
+                      disabled={data.boards.length >= BOARD_CREATION_LIMIT}
+                      onClick={() => {
+                        setCreateUsingAssistant(true);
+                        setEditor({ kind: 'board' });
+                      }}
+                    >
+                      {creatorText('title')}
+                    </button>
+                  )}
                   <div className="onboarding-steps">
                     <span>
                       <b>01</b>
@@ -1048,12 +1103,54 @@ export default function App() {
           </div>
         )}
 
+        {creator && board && view === 'boards' && (
+          <InvestigationCreator
+            key={board.id}
+            board={board}
+            nodes={data.characters}
+            folders={data.folders}
+            locale={locale}
+            audit={creator === 'audit'}
+            onClose={closeCreator}
+            onFoldersChange={(creatorFolderIds) =>
+              commit((current) => ({
+                ...current,
+                boards: current.boards.map((item) =>
+                  item.id === board.id ? { ...item, creatorFolderIds } : item,
+                ),
+              }))
+            }
+            onSave={(plan, members, close, diagram) => {
+              commit((current) => {
+                const updated = new Map(members.map((n) => [n.id, n]));
+                const existing = new Set(current.characters.map((n) => n.id));
+                return databaseSchema.parse({
+                  ...current,
+                  characters: [
+                    ...current.characters.map((n) => updated.get(n.id) || n),
+                    ...members.filter((n) => !existing.has(n.id)),
+                  ],
+                  boards: current.boards.map((c) =>
+                    c.id === board.id
+                      ? applyCreatorDiagram(
+                        { ...c, characterIds: members.map((n) => n.id), investigation: plan },
+                        diagram || { nodes: [] },
+                      )
+                      : c,
+                  ),
+                });
+              });
+              if (close) closeCreator();
+            }}
+          />
+        )}
+
         {libraryView && (
           <>
             <div className="library-role-toolbar">
               {activeKind === 'person' ? (
                 <div className="role-filter" role="group" aria-label={tr('trace.roles')}>
-                  {(['all', 'witness', 'suspect'] as const).map((role) => (
+                  {(['all', 'witness', 'suspect', 'victim'] as const).map((role) => (
                     <button
                       key={role}
                       className={roleFilter === role ? 'active' : ''}
@@ -1065,7 +1162,9 @@ export default function App() {
                           ? 'trace.allRoles'
                           : role === 'witness'
                             ? 'trace.filterWitness'
-                            : 'trace.filterSuspect',
+                            : role === 'victim'
+                              ? 'trace.filterVictim'
+                              : 'trace.filterSuspect',
                       )}
                     </button>
                   ))}
@@ -1075,6 +1174,7 @@ export default function App() {
               )}
             </div>
             <CharacterLibrary
+              key={`${activeKind}:${roleFilter}`}
               data={{
                 ...data,
                 folders: data.folders.filter((folder) => folderKindOf(folder) === activeKind),
@@ -1083,7 +1183,11 @@ export default function App() {
                     kindOf(n) === activeKind &&
                     (activeKind !== 'person' ||
                       roleFilter === 'all' ||
-                      (roleFilter === 'witness' ? n.witness : n.suspect !== false)),
+                      (roleFilter === 'witness'
+                        ? n.witness
+                        : roleFilter === 'victim'
+                          ? n.victim
+                          : n.suspect !== false)),
                 ),
               }}
               search={search}
@@ -1097,6 +1201,7 @@ export default function App() {
               onNewCharacter={newCharacter}
               onEditCharacter={(character) => setEditor({ kind: 'character', id: character.id })}
               onDeleteCharacter={askDeleteCharacter}
+              onDeleteCharacters={askDeleteCharacters}
               onExportCharacter={(character) =>
                 void exportJSON(
                   createCharactersTransfer(data, { characterIds: [character.id] }),
