@@ -1,4 +1,5 @@
 {
+  "samples.constraintLabel": "Ограничение №{0}",
   "samples.profilePreservedText": "сохранена отдельно",
   "samples.backupRecoveredText": "восстановлена",
   "samples.characterStory": "История персонажа {0}",

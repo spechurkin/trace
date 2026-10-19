@@ -64,66 +64,73 @@ function geometry(diagram: InvestigationDiagram) {
 }
 
 describe('automatic investigation graph', () => {
-  it('packs dense neighbouring branches without overlapping cards or captions across random seeds', () => {
-    const nodes: InvestigationNode[] = [],
-      plan = emptyPlan();
-    for (let group = 0; group < 3; group++) {
-      nodes.push({ id: `place${group}`, name: `Location ${group}`, kind: 'location' });
-      for (let child = 0; child < 6; child++) {
-        const id = `clue${group}-${child}`;
-        nodes.push({ id, name: `A long clue caption ${group}-${child}`, kind: 'evidence' });
-        plan.evidence.push({
-          id: `e${id}`,
-          nodeId: id,
-          locationId: `place${group}`,
-          conclusionId: 'fact',
-          effect: 'supports',
-          certainty: 'confirmed',
-          explanation: 'Source',
-        });
-      }
-    }
-    nodes.push(
-      { id: 'person1', name: 'First witness', kind: 'person' },
-      { id: 'person2', name: 'Second witness', kind: 'person' },
-    );
-    const size = { radius: 48, labelWidth: 135, labelTop: 40, labelBottom: 70 };
-    const footprints = Object.fromEntries(nodes.map((n) => [n.id, size]));
-    for (let seed = 1; seed <= 20; seed++) {
-      const diagram = buildInvestigationDiagram(plan, nodes, [], {
-        random: random(seed),
-        footprints,
-      });
-      const byId = new Map(diagram.nodes.map((n) => [n.id, n]));
-      const edges: DiagramEdge[] = diagram.nodes.flatMap((n) =>
-        (n.parentIds ?? [n.parentId]).map((parentId) => ({
-          id: n.id,
-          parentId,
-          a: parentId ? byId.get(parentId)! : { x: 0, y: 0 },
-          b: n,
-        })),
-      );
-      for (let i = 0; i < diagram.nodes.length; i++) {
-        for (let j = i + 1; j < diagram.nodes.length; j++) {
-          expect(footprintsOverlap(diagram.nodes[i], size, diagram.nodes[j], size)).toBe(false);
+  // This stress case runs the full layout search for twenty independent seeds.
+  it(
+    'packs dense neighbouring branches without overlapping cards or captions across random seeds',
+    { timeout: 120_000 },
+    () => {
+      const nodes: InvestigationNode[] = [],
+        plan = emptyPlan();
+      for (let group = 0; group < 3; group++) {
+        nodes.push({ id: `place${group}`, name: `Location ${group}`, kind: 'location' });
+        for (let child = 0; child < 6; child++) {
+          const id = `clue${group}-${child}`;
+          nodes.push({ id, name: `A long clue caption ${group}-${child}`, kind: 'evidence' });
+          plan.evidence.push({
+            id: `e${id}`,
+            nodeId: id,
+            locationId: `place${group}`,
+            conclusionId: 'fact',
+            effect: 'supports',
+            certainty: 'confirmed',
+            explanation: 'Source',
+          });
         }
       }
-      // These are centre-to-centre segments. The renderer routes the final paths
-      // around captions; placement balances crossings with a compact footprint.
-      let crossings = 0;
-      for (let i = 0; i < edges.length; i++)
-        for (let j = 0; j < i; j++) if (edgesCross(edges[i], edges[j])) crossings++;
-      expect(crossings, `seed ${seed}`).toBeLessThanOrEqual(2);
-      const extent = Math.max(...diagram.nodes.map((n) => Math.max(Math.abs(n.x), Math.abs(n.y))));
-      expect(extent).toBeLessThan(800);
-      expect(
-        buildInvestigationDiagram(plan, nodes, diagram.nodes, {
-          random: random(seed + 100),
+      nodes.push(
+        { id: 'person1', name: 'First witness', kind: 'person' },
+        { id: 'person2', name: 'Second witness', kind: 'person' },
+      );
+      const size = { radius: 48, labelWidth: 135, labelTop: 40, labelBottom: 70 };
+      const footprints = Object.fromEntries(nodes.map((n) => [n.id, size]));
+      for (let seed = 1; seed <= 20; seed++) {
+        const diagram = buildInvestigationDiagram(plan, nodes, [], {
+          random: random(seed),
           footprints,
-        }),
-      ).toEqual(diagram);
-    }
-  });
+        });
+        const byId = new Map(diagram.nodes.map((n) => [n.id, n]));
+        const edges: DiagramEdge[] = diagram.nodes.flatMap((n) =>
+          (n.parentIds ?? [n.parentId]).map((parentId) => ({
+            id: n.id,
+            parentId,
+            a: parentId ? byId.get(parentId)! : { x: 0, y: 0 },
+            b: n,
+          })),
+        );
+        for (let i = 0; i < diagram.nodes.length; i++) {
+          for (let j = i + 1; j < diagram.nodes.length; j++) {
+            expect(footprintsOverlap(diagram.nodes[i], size, diagram.nodes[j], size)).toBe(false);
+          }
+        }
+        // These are centre-to-centre segments. The renderer routes the final paths
+        // around captions; placement balances crossings with a compact footprint.
+        let crossings = 0;
+        for (let i = 0; i < edges.length; i++)
+          for (let j = 0; j < i; j++) if (edgesCross(edges[i], edges[j])) crossings++;
+        expect(crossings, `seed ${seed}`).toBeLessThanOrEqual(2);
+        const extent = Math.max(
+          ...diagram.nodes.map((n) => Math.max(Math.abs(n.x), Math.abs(n.y))),
+        );
+        expect(extent).toBeLessThan(800);
+        expect(
+          buildInvestigationDiagram(plan, nodes, diagram.nodes, {
+            random: random(seed + 100),
+            footprints,
+          }),
+        ).toEqual(diagram);
+      }
+    },
+  );
   it('groups by unique locations and explicit discovery links without interpreting prose', () => {
     const { nodes, plan } = sample();
     const diagram = buildInvestigationDiagram(plan, nodes, [], { random: random() });

@@ -6,6 +6,7 @@ import { setLocale } from '../../shared/i18n';
 import { databaseSchema, emptyDatabase, removeFromBoard } from '../../shared/model';
 import { createStoriesTransfer, mergeTransfer } from '../../shared/transfer';
 import type { InvestigationNode } from './contracts';
+import { russianText } from '../../tests/russian-fixtures';
 
 afterEach(() => setLocale('en'));
 
@@ -259,7 +260,11 @@ describe('time constraints and alibis', () => {
       s.nodes.find((n) => n.id === 'start')!.name = 'Departure';
       s.nodes.find((n) => n.id === 'end')!.name = 'Arrival';
       s.p.ordering.push({
-        id: 'opaque-order', beforeId: 't1', afterId: 't2', minGap: 0, maxGap: 2,
+        id: 'opaque-order',
+        beforeId: 't1',
+        afterId: 't2',
+        minGap: 0,
+        maxGap: 2,
       });
       const before = structuredClone(s.board);
       const issue = auditInvestigation(s.board, s.nodes, locale).issues.find(
@@ -268,7 +273,9 @@ describe('time constraints and alibis', () => {
       expect(issue.ids).toEqual(expect.arrayContaining(['opaque-order', 't1', 't2']));
       expect(issue.args[0]).toContain('Departure');
       expect(issue.args[0]).toContain('Arrival');
-      expect(issue.args[0]).toContain(locale === 'ru' ? '\u041e\u0433\u0440\u0430\u043d\u0438\u0447\u0435\u043d\u0438\u0435 №1' : 'Constraint #1');
+      expect(issue.args[0]).toContain(
+        locale === 'ru' ? russianText('samples.constraintLabel', 1) : 'Constraint #1',
+      );
       expect(issue.args[0]).toContain('night');
       for (const id of issue.ids) expect(issue.args[0]).not.toContain(id);
       expect(s.board).toEqual(before);

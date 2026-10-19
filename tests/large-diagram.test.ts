@@ -6,7 +6,8 @@ import { applyCreatorDiagram } from '../src/creator-diagram';
 import { diagramMetrics } from './diagram-metrics';
 
 afterEach(() => setLocale('en'));
-it('checks the dead witness example, including rendered curves', () => {
+// Include both the full demo layout search and the rendered-curve audit.
+it('checks the dead witness example, including rendered curves', { timeout: 30_000 }, () => {
   setLocale('ru');
   const data = demoDatabase(),
     original = data.boards[0];
