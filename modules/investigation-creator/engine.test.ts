@@ -268,7 +268,7 @@ describe('time constraints and alibis', () => {
       expect(issue.ids).toEqual(expect.arrayContaining(['opaque-order', 't1', 't2']));
       expect(issue.args[0]).toContain('Departure');
       expect(issue.args[0]).toContain('Arrival');
-      expect(issue.args[0]).toContain(locale === 'ru' ? 'Ограничение №1' : 'Constraint #1');
+      expect(issue.args[0]).toContain(locale === 'ru' ? '\u041e\u0433\u0440\u0430\u043d\u0438\u0447\u0435\u043d\u0438\u0435 №1' : 'Constraint #1');
       expect(issue.args[0]).toContain('night');
       for (const id of issue.ids) expect(issue.args[0]).not.toContain(id);
       expect(s.board).toEqual(before);
