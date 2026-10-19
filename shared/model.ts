@@ -296,6 +296,10 @@ export type LoadResult = { data: Database; path: string; warning?: string };
 export type ExportFormat = 'png' | 'svg';
 
 export interface DesktopAPI {
+  getThemes(): Promise<import('./themes').ThemeCatalog>;
+
+  showThemesFolder(): Promise<void>;
+
   getUpdateState(): Promise<import('./updates').UpdateState>;
 
   checkForUpdates(): Promise<import('./updates').UpdateState>;

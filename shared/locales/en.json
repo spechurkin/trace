@@ -518,5 +518,20 @@
   "updates.weekly": "Every week",
   "updates.monthly": "Every month",
   "updates.intervalHint": "Default: every day. A month is 30 days. The schedule is saved between app launches; you can check manually at any time.",
-  "updates.invalidInterval": "Choose a day, a week or a month."
+  "updates.invalidInterval": "Choose a day, a week or a month.",
+  "theme.title": "Theme",
+  "theme.theme": "Interface theme",
+  "theme.original": "Trace — Original",
+  "theme.hint": "Changes apply immediately and are remembered on this device. Your library and exports keep their original content.",
+  "theme.reload": "Reload themes",
+  "theme.openFolder": "Open themes folder",
+  "theme.folderHint": "Add a folder with your theme to the themes folder beside the application, then reload themes.",
+  "theme.desktopHint": "Custom theme folders are available in the desktop application.",
+  "theme.loading": "Loading themes…",
+  "theme.unavailable": "Theme unavailable",
+  "theme.unavailableHint": "The selected theme is unavailable. The original theme is active; restore the files and reload themes to use it again.",
+  "theme.warnings": "Theme loading errors",
+  "theme.loadError": "Could not load the theme stylesheet. Check its files and reload themes.",
+  "theme.reloadError": "Could not read the themes folder. Check folder permissions and try again.",
+  "theme.folderError": "Could not open the themes folder. Check folder permissions and try again."
 }

@@ -1,0 +1,214 @@
+/* Clubs' original green palette and soft paper surfaces. */
+:root[data-theme='custom'][data-theme-id='clubs'] {
+  --theme-accent: #32745e;
+  --theme-accent-ink: #ffffff;
+  --theme-bg: #f7f8f4;
+  --theme-panel: #ffffff;
+  --theme-panel-alt: #eff2eb;
+  --theme-input: #ffffff;
+  --theme-text: #2c3f36;
+  --theme-muted: #657568;
+  --theme-faint: #879087;
+  --theme-line: #e4e8df;
+  --theme-hover: #f5f7f1;
+  --theme-canvas: #f7f8f4;
+  --theme-active: #f0f4ec;
+  --theme-shadow: 0 8px 35px #243b2916;
+  --theme-edge: #dfe5db;
+  --theme-chrome: #ffffff;
+  --theme-rail: #233c33;
+  --theme-chrome-text: #2c3f36;
+  --theme-chrome-muted: #657568;
+  --theme-chrome-line: #e4e8df;
+  --theme-chrome-hover: #f5f7f1;
+
+  .rail,
+  .topbar {
+    box-shadow: none;
+  }
+
+  .brand-mark {
+    color: #dbebe0;
+  }
+
+  .rail-button {
+    color: #9cb0a4;
+    border-radius: 10px;
+  }
+
+  .rail-button:hover {
+    color: #d3e3d8;
+    background: #ffffff09;
+  }
+
+  .rail-button.active {
+    color: #edf4e9;
+    background: #425b4c;
+    box-shadow: none;
+  }
+
+  .rail-button.active::before {
+    background: #aac9a0;
+  }
+
+  .rail button:focus-visible {
+    outline-color: #aac9a0;
+  }
+
+  .version {
+    color: #7c9384;
+  }
+
+  .wordmark {
+    color: #2e483b;
+  }
+
+  .wordmark > span {
+    color: #8cad81;
+  }
+
+  .button {
+    border-radius: 8px;
+  }
+
+  .icon-button {
+    border-radius: 7px;
+  }
+
+  .button.primary {
+    background: var(--theme-accent);
+    box-shadow: 0 2px 3px #204f2912;
+  }
+
+  .button.primary:hover:not(:disabled) {
+    background: #255f4d;
+  }
+
+  .button.secondary,
+  .new-club,
+  .button.dashed,
+  .canvas-tool,
+  .label-toggle,
+  .zoom-controls {
+    background: var(--theme-panel);
+    color: #52634f;
+    box-shadow: none;
+  }
+
+  .button.secondary:hover:not(:disabled) {
+    background: var(--theme-hover);
+    border-color: #b6c8b5;
+  }
+
+  .new-club {
+    background: var(--theme-active);
+  }
+
+  .new-club:hover {
+    background: #e6eedf;
+  }
+
+  .canvas-tool {
+    background: #fdfefbcc;
+    box-shadow: 0 1px 4px #2a372009;
+  }
+
+  .zoom-controls {
+    box-shadow: 0 3px 16px #2644220a;
+  }
+
+  .label-toggle {
+    background: #fdfefb;
+  }
+
+  .canvas-tool.active,
+  .label-toggle.active,
+  .portrait-crop-tools [aria-pressed='true'] {
+    color: #3e7448;
+    background: #eaf1e2;
+    border-color: #bfd0b3;
+  }
+
+  .button:active:not(:disabled) {
+    box-shadow: none;
+  }
+
+  .count,
+  .pill,
+  .inspector-tabs > button.active .count {
+    color: #657568;
+    background: #edf4e9;
+  }
+
+  .field input:not([type='checkbox']),
+  .field textarea,
+  .field select,
+  .search-input {
+    border-color: #dce5d2;
+    border-radius: 7px;
+    box-shadow: none;
+  }
+
+  .field input:not([type='checkbox']),
+  .field textarea,
+  .field select,
+  .search-input > input {
+    color: #5b7450;
+  }
+
+  .search-input {
+    border-radius: 8px;
+  }
+
+  .topbar button:focus-visible,
+  button:focus-visible,
+  a:focus-visible {
+    outline-color: #4a9b80;
+  }
+
+  input:focus,
+  select:focus,
+  textarea:focus {
+    outline-color: #90baa5;
+  }
+
+  .modal {
+    background: #fdfefa;
+    border-color: #e2e9d9;
+    border-radius: 15px;
+    box-shadow: 0 20px 80px #0919094d;
+  }
+
+  .modal-backdrop {
+    background: #15251ac0;
+  }
+
+  .empty-orbit {
+    color: #96b281;
+    background: radial-gradient(circle, #e5eedf 0%, #edf3e7 35%, #f7f8f4 69%);
+  }
+
+  .button.danger {
+    color: #ffffff;
+    background: #b85855;
+  }
+
+  .button.danger:hover {
+    background: #a04a47;
+  }
+
+  .danger-text {
+    color: #b66c63 !important;
+  }
+
+  .form-error,
+  .save-alert {
+    color: #b16e60;
+    border-color: #edcfc1;
+    background: #fff5ef;
+  }
+
+  .save-status.error {
+    color: #b16e60;
+  }
+}

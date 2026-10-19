@@ -70,7 +70,7 @@ describe('numerical time diagnostics', () => {
         '03:26–03:30',
       ])
         expect(details).toContain(expected);
-      expect(details).toContain(locale === 'ru' ? 'можно подождать' : 'Waiting');
+      expect(details).toContain(locale === 'ru' ? '\u043c\u043e\u0436\u043d\u043e \u043f\u043e\u0434\u043e\u0436\u0434\u0430\u0442\u044c' : 'Waiting');
       for (const id of ['first-node', 'next-node', 'first-time', 'next-time', 'trip'])
         expect(details).not.toContain(id);
       expect(s.plan).toEqual(original);
@@ -83,7 +83,7 @@ describe('numerical time diagnostics', () => {
     const issue = s.audit('ru').find((i) => i.code === 'alibiConflict')!;
     expect(issue.severity).toBe('error');
     expect(issue.details!.join('\n')).toContain(
-      'самое раннее прибытие 03:26 позже самого позднего начала 03:25 на 1 мин',
+      '\u0441\u0430\u043c\u043e\u0435 \u0440\u0430\u043d\u043d\u0435\u0435 \u043f\u0440\u0438\u0431\u044b\u0442\u0438\u0435 03:26 \u043f\u043e\u0437\u0436\u0435 \u0441\u0430\u043c\u043e\u0433\u043e \u043f\u043e\u0437\u0434\u043d\u0435\u0433\u043e \u043d\u0430\u0447\u0430\u043b\u0430 03:25 \u043d\u0430 1 \u043c\u0438\u043d',
     );
   });
 
@@ -110,10 +110,10 @@ describe('numerical time diagnostics', () => {
       .audit('ru')
       .find((i) => i.code === 'temporalCycle')!
       .details!.join('\n');
-    expect(details).toContain('Требуется промежуток после окончания: 1–2 мин');
-    expect(details).toContain('промежуток составляет 15–22 мин');
+    expect(details).toContain('\u0422\u0440\u0435\u0431\u0443\u0435\u0442\u0441\u044f \u043f\u0440\u043e\u043c\u0435\u0436\u0443\u0442\u043e\u043a \u043f\u043e\u0441\u043b\u0435 \u043e\u043a\u043e\u043d\u0447\u0430\u043d\u0438\u044f: 1–2 \u043c\u0438\u043d');
+    expect(details).toContain('\u043f\u0440\u043e\u043c\u0435\u0436\u0443\u0442\u043e\u043a \u0441\u043e\u0441\u0442\u0430\u0432\u043b\u044f\u0435\u0442 15–22 \u043c\u0438\u043d');
     expect(details).toContain('03:09–03:12');
-    expect(details).toContain('Фактически заданное начало: 03:25–03:30');
+    expect(details).toContain('\u0424\u0430\u043a\u0442\u0438\u0447\u0435\u0441\u043a\u0438 \u0437\u0430\u0434\u0430\u043d\u043d\u043e\u0435 \u043d\u0430\u0447\u0430\u043b\u043e: 03:25–03:30');
   });
 
   it('describes overlapping records and each impossible direction', () => {
@@ -168,7 +168,7 @@ describe('numerical time diagnostics', () => {
     expect(issues).toHaveLength(2);
     expect(issues.flatMap((i) => i.details!).join('\n')).toContain('03:20–03:09');
     expect(issues.flatMap((i) => i.details!).join('\n')).toContain(
-      'минимальный промежуток 10 мин, максимальный 5 мин',
+      '\u043c\u0438\u043d\u0438\u043c\u0430\u043b\u044c\u043d\u044b\u0439 \u043f\u0440\u043e\u043c\u0435\u0436\u0443\u0442\u043e\u043a 10 \u043c\u0438\u043d, \u043c\u0430\u043a\u0441\u0438\u043c\u0430\u043b\u044c\u043d\u044b\u0439 5 \u043c\u0438\u043d',
     );
   });
 

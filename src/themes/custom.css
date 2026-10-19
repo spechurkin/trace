@@ -1,0 +1,44 @@
+/* User palettes use the shared component paint rules. */
+:root[data-theme='custom'] {
+  color-scheme: light;
+  font-family: var(--theme-font, 'Manrope Variable', Manrope, system-ui, sans-serif);
+  --theme-accent: #32745e;
+  --theme-accent-ink: #ffffff;
+  --theme-bg: #f7f8f4;
+  --theme-panel: #ffffff;
+  --theme-panel-alt: #eef2eb;
+  --theme-input: #ffffff;
+  --theme-text: #2c3f36;
+  --theme-muted: #657568;
+  --theme-faint: #879087;
+  --theme-line: #dce3d7;
+  --theme-hover: #eaf0e5;
+  --theme-canvas: #f7f8f4;
+  --theme-active: color-mix(in srgb, var(--theme-accent) 16%, var(--theme-panel));
+  --theme-shadow: 0 14px 45px #00000030;
+  --theme-edge: var(--theme-line);
+  --theme-highlight: transparent;
+  --theme-chrome: var(--theme-panel);
+  --theme-rail: var(--theme-panel);
+  --theme-chrome-text: var(--theme-text);
+  --theme-chrome-muted: var(--theme-muted);
+  --theme-chrome-line: var(--theme-line);
+  --theme-chrome-hover: var(--theme-hover);
+  --theme-pattern: none;
+
+  &:where([data-theme-mode='dark']) {
+    color-scheme: dark;
+    --theme-accent: #91c8ae;
+    --theme-accent-ink: #14231c;
+    --theme-bg: #18221d;
+    --theme-panel: #222f28;
+    --theme-panel-alt: #2b3b31;
+    --theme-input: #19261e;
+    --theme-text: #edf4ec;
+    --theme-muted: #b5c5b7;
+    --theme-faint: #8b9f8e;
+    --theme-line: #415847;
+    --theme-hover: #324a3b;
+    --theme-canvas: #142019;
+  }
+}

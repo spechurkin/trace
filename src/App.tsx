@@ -72,6 +72,7 @@ import {
 import { UpdateSettings, useUpdates } from './Updates';
 import { BranchForm } from './InvestigationForms';
 import { BoardInspector } from './BoardInspector';
+import { ThemeSettings } from './themes/ThemeSettings';
 import { InvestigationCreator } from './InvestigationCreator';
 import { applyCreatorDiagram } from './creator-diagram';
 import { messages as creatorMessages } from '../modules/investigation-creator/messages';
@@ -541,7 +542,7 @@ export default function App() {
           <Count>{data.boards.length}</Count>
         </div>
         <button
-          className="button new-board"
+          className="button new-board new-club"
           disabled={data.boards.length >= BOARD_CREATION_LIMIT}
           title={
             data.boards.length >= BOARD_CREATION_LIMIT
@@ -556,10 +557,10 @@ export default function App() {
         {data.boards.length >= BOARD_CREATION_LIMIT && (
           <p className="sidebar-hint">{tr('validation.boardLimit', BOARD_CREATION_LIMIT)}</p>
         )}
-        <div className="board-list">
+        <div className="board-list club-list">
           {data.boards.map((c) => (
             <button
-              className={`board-list-item ${c.id === board?.id && view === 'boards' ? 'active' : ''}`}
+              className={`board-list-item club-list-item ${c.id === board?.id && view === 'boards' ? 'active' : ''}`}
               key={c.id}
               onClick={() => {
                 commit((data) => ({ ...data, activeBoardId: c.id }));
@@ -1215,6 +1216,7 @@ export default function App() {
         {view === 'settings' && (
           <section className="settings-page">
             <UpdateSettings state={updateState} flush={library.flush} />
+            <ThemeSettings />
             <div className="settings-card compact">
               <h2>{tr('settings.language')}</h2>
               <label className="field">

@@ -1,7 +1,7 @@
 {
   "name": "trace",
   "productName": "Trace",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Offline investigation builder",
   "author": "HoloLight17",
   "license": "MIT",
@@ -24,7 +24,8 @@
     "dist": "npm run build && electron-builder",
     "dist:win": "npm run build && electron-builder --win",
     "dist:mac": "npm run build && electron-builder --mac",
-    "dist:linux": "npm run build && electron-builder --linux"
+    "dist:linux": "npm run build && electron-builder --linux",
+    "test:themes": "npm run build && playwright test tests/desktop/themes.spec.ts"
   },
   "dependencies": {
     "@fontsource-variable/manrope": "5.3.0",
@@ -60,7 +61,8 @@
       "dist/**/*",
       "dist-electron/**/*",
       "resources/icon.png",
-      "package.json"
+      "package.json",
+      "resources/themes/**/*"
     ],
     "asar": true,
     "npmRebuild": false,
@@ -85,7 +87,8 @@
       "installerLanguages": [
         "en_US",
         "ru_RU"
-      ]
+      ],
+      "include": "resources/themes.nsh"
     },
     "portable": {
       "artifactName": "Trace-${version}-windows-portable.${ext}"
